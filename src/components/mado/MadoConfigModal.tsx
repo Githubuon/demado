@@ -55,10 +55,14 @@ export function MadoConfigModal({
             ]}
             onChange={(ev, key: "left" | "top") => { mado.offset[key] = parseInt(ev.target.value); update(mado) }}
           />
-          <ChoiceField label="アドレスバー表示"
+          <ChoiceField name="addressbar" label="アドレスバー表示"
             defaultValue={mado.addressbar ? "1" : "0"}
             onChange={(ev) => { mado.addressbar = ev.target.value == "1"; update(mado) }}
           />
+          <ChoiceField name="showScroll" label="スクロールバー表示"
+            defaultValue={mado.showScroll ? "1" : "0"}
+            onChange={(ev) => { mado.showScroll = ev.target.value == "1"; update(mado) }}
+          />          
           <InputField label="ズーム倍率" type="number" icon="fa fa-search" help="" placeholder="0.5"
             defaultValue={mado.zoom}
             onChange={ev => { mado.zoom = parseFloat(ev.target.value); update(mado) }}

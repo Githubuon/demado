@@ -27,12 +27,12 @@ export default class ScriptService {
     });
   }
 
-  offset(tabId: number, offset: { left: number, top: number }): Promise<void> {
+  offset(tabId: number, offset: { left: number, top: number }, showScroll: boolean): Promise<void> {
     return this.mod.insertCSS({
       target: { tabId },
       css: `
         html {
-          overflow: hidden !important;
+          overflow: ${showScroll ? "auto" : "hidden"} !important;
         }
         body {
           position: relative;

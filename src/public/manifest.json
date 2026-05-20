@@ -26,7 +26,7 @@
     "default_icon": {
       "128": "icons/128.png"
     },
-    "default_title": "demado",
+    "default_title": "demadoMe",
     "default_popup": "index.html#popup"
   },
   "background": {

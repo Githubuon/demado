@@ -114,6 +114,7 @@ export default class Mado extends Model {
      */
     index: Types.number,
     colorcode: Types.string,
+    showScroll: Types.bool,
   }
 
   public name: string = "艦これ（ながらプレイ用）";

@@ -78,6 +78,7 @@ export function MadoCard({
               { name: "縦ずれ", value: mado.offset.top },
               { name: "ズーム", value: mado.zoom },
               { name: "アドレスバー", value: mado.addressbar ? "表示" : "非表示" },
+              { name: "スクロールバー", value: mado.showScroll ? "表示" : "非表示" },
             ].map(({ name, value }) => <BasicInformationTag key={name} name={name} value={value} />)}
           </div>
           <div className="control">

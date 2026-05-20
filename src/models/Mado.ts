@@ -28,6 +28,7 @@ export interface PortableJSONObject {
 export interface MadoPortableObject extends MadoBasicInfo, MadoAdvancedInfo, MadoColorable, MadoZoom {
   size: MadoSize;
   offset: MadoOffset;
+  showScroll?: boolean;
 }
 
 interface MadoBasicInfo {
@@ -120,6 +121,7 @@ export default class Mado extends Model {
   public size = { width: 1200, height: 720 };
   public position = { x: 20, y: 100 };
   public addressbar: boolean = false;
+  public showScroll: boolean = false;
 
   public zoom: number = 0.5;
   public offset = { left: 0, top: -76 };
@@ -180,6 +182,7 @@ export default class Mado extends Model {
       url: this.url,
       name: this.name,
       addressbar: this.addressbar,
+      showScroll: this.showScroll,
       size: this.size,
       offset: this.offset,
       zoom: this.zoom,

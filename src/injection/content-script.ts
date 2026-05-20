@@ -30,7 +30,7 @@ import { type MadoPortableObject } from "../models/Mado";
     }
 
     if (mado.offset) {
-      document.documentElement.style.overflow = "hidden";
+      document.documentElement.style.overflow = mado.showScroll ? "auto" : "hidden";
       document.body.style.position = "relative";
       if (mado.offset.left) document.body.style.left = `${mado.offset.left}px`;
       if (mado.offset.top) document.body.style.top = `${mado.offset.top}px`;

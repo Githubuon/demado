@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "demadoMe",
+  "name": "demado",
   "description": "ブラゲーのランチャー",
   "version": "2.0.61",
   "permissions": [
@@ -26,7 +26,7 @@
     "default_icon": {
       "128": "icons/128.png"
     },
-    "default_title": "demadoMe",
+    "default_title": "demado",
     "default_popup": "index.html#popup"
   },
   "background": {

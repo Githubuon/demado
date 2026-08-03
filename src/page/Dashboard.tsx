@@ -36,7 +36,7 @@ export function DashboardPage() {
 
   return <div>
     <div className="p-2">
-      {mados.map((mado, i) => <ShortMadoCard mado={mado} key={mado._id} index={i}
+      {mados.filter(mado => mado.showLauncherCard !== false).map((mado, i) => <ShortMadoCard mado={mado} key={mado._id} index={i}
         refresh={() => navigate(0)} launcher={launcher} inpopup={false} config={config}
       />)}
     </div>

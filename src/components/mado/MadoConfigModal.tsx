@@ -62,7 +62,11 @@ export function MadoConfigModal({
           <ChoiceField name="showScroll" label="スクロールバー表示"
             defaultValue={mado.showScroll ? "1" : "0"}
             onChange={(ev) => { mado.showScroll = ev.target.value == "1"; update(mado) }}
-          />          
+          />
+          <ChoiceField name="showLauncherCard" label="カード表示"
+            defaultValue={mado.showLauncherCard ? "1" : "0"}
+            onChange={(ev) => { mado.showLauncherCard = ev.target.value == "1"; update(mado) }}
+          />
           <InputField label="ズーム倍率" type="number" icon="fa fa-search" help="" placeholder="0.5"
             defaultValue={mado.zoom}
             onChange={ev => { mado.zoom = parseFloat(ev.target.value); update(mado) }}

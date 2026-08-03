@@ -18,7 +18,7 @@ export function PopupPage() {
   const releasenote = note as unknown as ReleaseNoteObject;
   return <div>
     <div className="p-2">
-      {mados.map((mado, i) => <ShortMadoCard mado={mado} key={mado._id} index={i} refresh={refresh} launcher={launcher} config={config} />)}
+      {mados.filter(mado => mado.showLauncherCard !== false).map((mado, i) => <ShortMadoCard mado={mado} key={mado._id} index={i} refresh={refresh} launcher={launcher} config={config} />)}
       <div className="demado-flex">
         <EmptyShortCard releasenote={releasenote} config={config} />
         {mados.length > 0 ? <OpenDashboardButton launcher={launcher} /> : null}

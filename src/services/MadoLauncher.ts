@@ -84,6 +84,7 @@ export default class MadoLauncher {
    * @param {chrome.tabs.Tab} tab
    */
   async resize(tab: chrome.tabs.Tab): Promise<void> {
+    await sleep(500);
     await this.scripting.execute(tab.id!, function (ext) {
       chrome.runtime.sendMessage(ext, {
         _act_: "/mado/resize", frame: {

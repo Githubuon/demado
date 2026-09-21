@@ -6,7 +6,7 @@ import ScriptService from "./ScriptService";
 import TabService from "./TabService";
 import WindowService from "./WindowService";
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const BROWSER_CONTEXT_SESSION_KEY = `demado_${chrome.runtime.id}_id`;
 
 export enum LaunchMode {
@@ -16,19 +16,20 @@ export enum LaunchMode {
 }
 
 export default class MadoLauncher {
-
   constructor(
     private windows: WindowService = new WindowService(),
     private tabs: TabService = new TabService(),
     private scripting: ScriptService = new ScriptService(),
     private permission: PermissionService = new PermissionService(),
-  ) { }
+  ) {}
 
   private sleepMsForLaunch = 1000; // XXX: これが不要な設計にしたい. LaunchHistoryを使うべきか
 
   public dashboard = {
     open: async () => {
-      const tabs = await this.tabs.query({ url: chrome.runtime.getURL("index.html") });
+      const tabs = await this.tabs.query({
+        url: chrome.runtime.getURL("index.html"),
+      });
       for (let i = 0; i < tabs.length; i++) {
         if (tabs[i].url?.endsWith("#dashboard")) {
           await this.windows.focus(tabs[i].windowId!);
@@ -36,8 +37,58 @@ export default class MadoLauncher {
         }
       }
       const dashboard = await Dashboard.user();
-      await this.windows.create(chrome.runtime.getURL("index.html#dashboard"), dashboard.toCreateData());
+      await this.windows.create(
+        chrome.runtime.getURL("index.html#dashboard"),
+        dashboard.toCreateData(),
+      );
     },
+  };
+
+  async launchSubPage(
+    parentMado: Mado,
+    page: {
+      name: string;
+      url: string;
+      width: number;
+      height: number;
+      left?: number;
+      top?: number;
+    },
+  ): Promise<chrome.windows.Window> {
+    const mado = new Mado();
+
+    mado.name = page.name;
+    mado.url = page.url;
+
+    mado.size = {
+      width: page.width || 1000,
+      height: page.height || 700,
+    };
+
+    mado.position = {
+      x: page.left ?? 100,
+      y: page.top ?? 100,
+    };
+
+    mado.addressbar = true;
+    mado.zoom = 1;
+    mado.offset = {
+      left: 0,
+      top: 0,
+    };
+
+const win = await this.windows.open(mado);
+
+if (win.id !== undefined) {
+  chrome.runtime.sendMessage(chrome.runtime.id, {
+    _act_: "/mado/subpage:register",
+    windowId: win.id,
+    madoId: parentMado._id!,
+    subPageUrl: page.url,
+  });
+}
+
+return win;
   }
 
   async launch(
@@ -61,17 +112,26 @@ export default class MadoLauncher {
     await sleep(this.sleepMsForLaunch);
     await this.scripting.js(tab.id!, "content-script.js");
 
-    chrome.tabs.sendMessage(tab.id!, { _act_: "/injected:__init__", id: mado._id, mado: mado.export(), mode });
+    chrome.tabs.sendMessage(tab.id!, {
+      _act_: "/injected:__init__",
+      id: mado._id,
+      mado: mado.export(),
+      mode,
+    });
 
     // ここではウィンドウを新規作成しているので、Bazelを考慮したresizeが必要
     await this.resize(tab);
 
     if (mode == LaunchMode.DYNAMIC) {
       // 何らかの方法で現在の設定値をページに継承しなければならない
-      await this.scripting.execute(tab.id!, function (portablestr) {
-        // FIXME: ここのkeyはどこかに定義しないとdynamic-confg.jsとの整合性があぶない
-        sessionStorage.setItem("demado_default_config_value", portablestr);
-      }, [JSON.stringify(mado.export())]);
+      await this.scripting.execute(
+        tab.id!,
+        function (portablestr) {
+          // FIXME: ここのkeyはどこかに定義しないとdynamic-confg.jsとの整合性があぶない
+          sessionStorage.setItem("demado_default_config_value", portablestr);
+        },
+        [JSON.stringify(mado.export())],
+      );
       await this.scripting.js(tab.id!, "dynamic-config.js");
     }
 
@@ -85,14 +145,19 @@ export default class MadoLauncher {
    */
   async resize(tab: chrome.tabs.Tab): Promise<void> {
     await sleep(500);
-    await this.scripting.execute(tab.id!, function (ext) {
-      chrome.runtime.sendMessage(ext, {
-        _act_: "/mado/resize", frame: {
-          outer: { w: window.outerWidth, h: window.outerHeight },
-          inner: { w: window.innerWidth, h: window.innerHeight },
-        },
-      })
-    }, [chrome.runtime.id]);
+    await this.scripting.execute(
+      tab.id!,
+      function (ext) {
+        chrome.runtime.sendMessage(ext, {
+          _act_: "/mado/resize",
+          frame: {
+            outer: { w: window.outerWidth, h: window.outerHeight },
+            inner: { w: window.innerWidth, h: window.innerHeight },
+          },
+        });
+      },
+      [chrome.runtime.id],
+    );
   }
 
   /**
@@ -101,12 +166,20 @@ export default class MadoLauncher {
    * @param {Mado} mado
    * @param {LaunchMode} mode
    */
-  async anchor(tab: chrome.tabs.Tab, mado: Mado, mode: LaunchMode = LaunchMode.DEFAULT): Promise<void> {
-    await this.scripting.execute(tab.id!, function (ext, mado, po, mode) {
-      sessionStorage.setItem(`demado_${ext}_id`, mado._id);
-      sessionStorage.setItem(`demado_${ext}_madojson`, JSON.stringify(po));
-      sessionStorage.setItem(`demado_${ext}_mode`, mode);
-    }, [chrome.runtime.id, mado, mado.export(), mode]);
+  async anchor(
+    tab: chrome.tabs.Tab,
+    mado: Mado,
+    mode: LaunchMode = LaunchMode.DEFAULT,
+  ): Promise<void> {
+    await this.scripting.execute(
+      tab.id!,
+      function (ext, mado, po, mode) {
+        sessionStorage.setItem(`demado_${ext}_id`, mado._id);
+        sessionStorage.setItem(`demado_${ext}_madojson`, JSON.stringify(po));
+        sessionStorage.setItem(`demado_${ext}_mode`, mode);
+      },
+      [chrome.runtime.id, mado, mado.export(), mode],
+    );
   }
 
   /**
@@ -118,7 +191,11 @@ export default class MadoLauncher {
     // ここでは既存のウィンドウを再利用するので、Bazelを考慮したresizeがいらない
     await this.scripting.js(tab.id!, "content-script.js");
     await sleep(this.sleepMsForLaunch);
-    chrome.tabs.sendMessage(tab.id!, { _act_: "/injected:__init__", id: mado._id, mado: mado.export() });
+    chrome.tabs.sendMessage(tab.id!, {
+      _act_: "/injected:__init__",
+      id: mado._id,
+      mado: mado.export(),
+    });
   }
 
   /**
@@ -129,9 +206,13 @@ export default class MadoLauncher {
    */
   async lookup(tabId: number): Promise<Mado | null> {
     try {
-      const id = await this.scripting.execute(tabId, function (k) {
-        return sessionStorage.getItem(k);
-      }, [BROWSER_CONTEXT_SESSION_KEY]);
+      const id = await this.scripting.execute(
+        tabId,
+        function (k) {
+          return sessionStorage.getItem(k);
+        },
+        [BROWSER_CONTEXT_SESSION_KEY],
+      );
       if (!id) return null;
       const mado = await Mado.find(id);
       await mado?.hydrate(this);
@@ -141,26 +222,32 @@ export default class MadoLauncher {
     }
   }
 
-
   /**
    * retrieve は、指定されたMadoが既に開かれているかどうかを確認し、
    * 開かれている場合はそのウィンドウとタブを返します
-   * @param mado 
-   * @returns 
+   * @param mado
+   * @returns
    */
-  async retrieve(mado: Mado): Promise<{ win: chrome.windows.Window, tab: chrome.tabs.Tab, mado: Mado } | null> {
+  async retrieve(mado: Mado): Promise<{
+    win: chrome.windows.Window;
+    tab: chrome.tabs.Tab;
+    mado: Mado;
+  } | null> {
     // {{{ chrome API で ドメインのみのURLではエラーが出るため、URLの最後にスラッシュを追加する
     const u = new URL(mado.url);
-    const url = [(u.pathname == "/" && !mado.url.endsWith("/")) ? mado.url + "/" : mado.url];
+    const url = [
+      u.pathname == "/" && !mado.url.endsWith("/") ? mado.url + "/" : mado.url,
+    ];
     // }}}
     // {{{ おせっかいながら、httpで設定されててhttpsにリダイレクトされているケースを考慮
     if (u.protocol == "http:") url.push(url[0].replace("http:", "https:"));
     // }}}
-    const tabs = await this.tabs.query({ url })
+    const tabs = await this.tabs.query({ url });
     if (!tabs || tabs.length === 0) return null;
     for (let i = 0; i < tabs.length; i++) {
       const tab = tabs[i];
-      if ((await this.tabs.query({ windowId: tab.windowId })).length > 1) continue; // ウィンドウ内に他のタブがある場合はdemadoではない
+      if ((await this.tabs.query({ windowId: tab.windowId })).length > 1)
+        continue; // ウィンドウ内に他のタブがある場合はdemadoではない
       if (!(await this.identify(tab, mado))) continue; // セッションストレージに同一のMado IDがない場合は今開こうとしているmadoではない
       const win = await this.windows.get(tab.windowId!, { populate: true });
       return { win, tab, mado };
@@ -176,9 +263,13 @@ export default class MadoLauncher {
    * @returns {Promise<boolean>}
    */
   private async identify(tab: chrome.tabs.Tab, mado: Mado): Promise<boolean> {
-    const id = await this.scripting.execute(tab.id!, function (k) {
-      return sessionStorage.getItem(k);
-    }, [BROWSER_CONTEXT_SESSION_KEY]);
+    const id = await this.scripting.execute(
+      tab.id!,
+      function (k) {
+        return sessionStorage.getItem(k);
+      },
+      [BROWSER_CONTEXT_SESSION_KEY],
+    );
     if (id == mado._id) return true;
     return false; // セッションストレージにIDがない場合はdemadoではない
   }
@@ -190,6 +281,6 @@ export default class MadoLauncher {
   }
 
   async permitted(mado: Mado): Promise<boolean> {
-    return (await this.permission.contains(mado.url) !== null);
+    return (await this.permission.contains(mado.url)) !== null;
   }
 }

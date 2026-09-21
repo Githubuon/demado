@@ -33,6 +33,39 @@ function PreviewLaunchIcon({mado, launcher}: {mado: Mado, launcher: MadoLauncher
   )
 }
 
+function SubPageIcon({ page }: {
+  page: {
+    name: string;
+    url: string;
+    iconUrl?: string;
+  }
+}) {
+  return (
+    <div
+      className="icon is-clickable"
+      title={page.name}
+      onClick={(ev) => {
+        ev.stopPropagation();
+        window.open(page.url, "_blank");
+      }}
+    >
+      {page.iconUrl ? (
+        <img
+          src={page.iconUrl}
+          alt={page.name}
+          style={{
+            width: "20px",
+            height: "20px",
+            objectFit: "contain",
+          }}
+        />
+      ) : (
+        <i className="fa fa-globe" />
+      )}
+    </div>
+  );
+}
+
 export function MadoCard({
   mado, index, launcher,
   refresh, edit,
@@ -62,10 +95,23 @@ export function MadoCard({
       onDragOver={onDragOver}
     >
       <div className={"card-header"} style={{ backgroundColor: bgcolor }}>
-        <p className={"card-header-title level " + textcolor}>
-          <span className={textcolor}>{mado.displayName()}</span>
-          {mado.$permitted ? <PreviewLaunchIcon mado={mado} launcher={launcher} /> : <PermissionAlertIcon mado={mado} />}
-        </p>
+<p className={"card-header-title level " + textcolor}>
+  <span className={textcolor}>{mado.displayName()}</span>
+
+  {mado.subPages.map((page, index) => (
+    <SubPageIcon
+      key={`${page.url}-${index}`}
+      page={page}
+    />
+  ))}
+  
+  {mado.$permitted
+    ? <PreviewLaunchIcon mado={mado} launcher={launcher} />
+    : <PermissionAlertIcon mado={mado} />
+  }
+
+
+</p>
       </div>
       <div className="card-content">
         <div className="content is-size-7">

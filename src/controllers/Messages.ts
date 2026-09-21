@@ -6,31 +6,74 @@ import WindowService from "../services/WindowService";
 import MadoLauncher, { LaunchMode } from "../services/MadoLauncher";
 
 const r = new Router<chrome.runtime.ExtensionMessageEvent>();
+const subPageWindows = new Map<number,  { madoId: string; subPageUrl: string;}>();
+
+chrome.windows.onBoundsChanged.addListener(async (win) => {
+  if (win.id === undefined) return;
+
+  const info = subPageWindows.get(win.id);
+  if (!info) return;
+
+  const mado = await Mado.find(info.madoId);
+  if (!mado) return;
+
+  const page = mado.subPages.find(
+    (p) => p.url === info.subPageUrl,
+  );
+  if (!page) return;
+
+  page.width = win.width ?? page.width;
+  page.height = win.height ?? page.height;
+  page.left = win.left ?? page.left;
+  page.top = win.top ?? page.top;
+
+  await mado.update({
+    subPages: mado.subPages,
+  });
+});
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  subPageWindows.delete(windowId);
+});
 
 // 現状では、Windowが閉じてしまうようなcontext (e.g. popup) から
 // launchしたいときのみ利用するendpoint
-r.on("/mado/launch", async ({ id, mode }: {
-  id: string,
-  mode: LaunchMode,
-}) => {
+r.on("/mado/launch", async ({ id, mode }: { id: string; mode: LaunchMode }) => {
   const mado = await Mado.find(id);
   if (!mado) return; // TODO: エラーハンドリング
   const launcher = new MadoLauncher();
   await launcher.launch(mado, mode);
-})
+});
 
 r.on("/mado/position:track", async (m) => {
   const mado = await Mado.find(m.id);
   await mado?.update({ position: m.position });
 });
 
-r.on("/mado/dynamic-config:result", async (m: { mado: string; params: MadoLikeParams }) => {
-  const mado = await Mado.find(m.mado);
-  if (!mado) return; // TODO: エラーハンドリング
-  await mado.update(m.params);
-  const tabservice = new TabService();
-  await tabservice.options.reopen({ mado: mado._id! });
-});
+r.on(
+  "/mado/subpage:register",
+  async (m: {
+    windowId: number;
+    madoId: string;
+    subPageUrl: string;
+  }) => {
+    subPageWindows.set(m.windowId, {
+      madoId: m.madoId,
+      subPageUrl: m.subPageUrl,
+    });
+  },
+);
+
+r.on(
+  "/mado/dynamic-config:result",
+  async (m: { mado: string; params: MadoLikeParams }) => {
+    const mado = await Mado.find(m.mado);
+    if (!mado) return; // TODO: エラーハンドリング
+    await mado.update(m.params);
+    const tabservice = new TabService();
+    await tabservice.options.reopen({ mado: mado._id! });
+  },
+);
 
 r.on("/mado/dynamic-config/zoom:set", async (m: { value: number }, sender) => {
   const tabservice = new TabService();
@@ -47,16 +90,28 @@ r.on("/mado:get", async (m: { id: string }) => {
   return { mado };
 });
 
-r.on("/mado/resize", async (m: { zoom: number, frame: { outer: { w: number, h: number }, inner: { w: number, h: number } } }, sender) => {
-  const tabs = new TabService();
-  const zoom = await tabs.zoom.get(sender.tab!.id!);
-  const wins = new WindowService();
-  const diff = {
-    w: m.frame.outer.w - (m.frame.inner.w * zoom),
-    h: m.frame.outer.h - (m.frame.inner.h * zoom),
-  };
-  return await wins.resizeBy(sender.tab!.windowId, diff);
-});
+r.on(
+  "/mado/resize",
+  async (
+    m: {
+      zoom: number;
+      frame: {
+        outer: { w: number; h: number };
+        inner: { w: number; h: number };
+      };
+    },
+    sender,
+  ) => {
+    const tabs = new TabService();
+    const zoom = await tabs.zoom.get(sender.tab!.id!);
+    const wins = new WindowService();
+    const diff = {
+      w: m.frame.outer.w - m.frame.inner.w * zoom,
+      h: m.frame.outer.h - m.frame.inner.h * zoom,
+    };
+    return await wins.resizeBy(sender.tab!.windowId, diff);
+  },
+);
 
 r.on("/mado/zoom:set", async (m: { value: number }, sender) => {
   const tabservice = new TabService();

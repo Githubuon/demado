@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Mado from "../../models/Mado";
 import PermissionService from "../../services/PermissionService";
 import type MadoLauncher from "../../services/MadoLauncher";
@@ -10,105 +10,306 @@ import { MadoAdvancedConfigs } from "./MadoAdvancedConfigs";
 import { LaunchMode } from "../../services/MadoLauncher";
 
 export function MadoConfigModal({
-  active, close, launcher,
-  mado, update, refresh,
+  active,
+  close,
+  launcher,
+  mado,
+  update,
+  refresh,
 }: {
-  active: boolean, close: () => void, launcher: MadoLauncher,
-  mado?: Mado | null, update: (mado: Mado) => void,
-  refresh: () => void,
+  active: boolean;
+  close: () => void;
+  launcher: MadoLauncher;
+  mado?: Mado | null;
+  update: (mado: Mado) => void;
+  refresh: () => void;
 }) {
   const [showAdvanced, setShowAdvanced] = React.useState(true);
+
+  const [subPageName, setSubPageName] = useState("");
+  const [subPageUrl, setSubPageUrl] = useState("");
+
   const perm = useMemo(() => new PermissionService(), []);
   const fallback = () => window.alert("許可がないため、操作できません");
-  const cleanup = () => { setShowAdvanced(false); close(); };
+  const cleanup = () => {
+    setShowAdvanced(false);
+    close();
+  };
   if (!mado) return null;
   return (
     <div className={"modal " + (active ? "is-active" : "")}>
-      <div className="modal-background" /* onClick={cleanup} // 背景黒領域で閉じるかどうか悩ましい */></div>
+      <div
+        className="modal-background" /* onClick={cleanup} // 背景黒領域で閉じるかどうか悩ましい */
+      ></div>
       <div className="modal-card">
         <header className="modal-card-head">
-          <p className="modal-card-title">{mado._id ? "窓の設定変更" : "窓の新規登録"}</p>
+          <p className="modal-card-title">
+            {mado._id ? "窓の設定変更" : "窓の新規登録"}
+          </p>
           <span className="is-size-6 has-text-grey-light">{mado._id}</span>
         </header>
         <section className="modal-card-body">
-          <InputField label="窓のURL" type="url" icon="fa fa-link" help=""
+          <InputField
+            label="窓のURL"
+            type="url"
+            icon="fa fa-link"
+            help=""
             defaultValue={mado.url}
             placeholder="http://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854"
-            onChange={ev => { mado.url = ev.target.value; update(mado) }}
+            onChange={(ev) => {
+              mado.url = ev.target.value;
+              update(mado);
+            }}
           />
-          <InputField label="窓の名前" type="text" icon="fa fa-tag" help=""
+          <InputField
+            label="窓の名前"
+            type="text"
+            icon="fa fa-tag"
+            help=""
             defaultValue={mado.name}
-            placeholder="艦これ（ながらプレイ用）" required={false}
-            onChange={ev => { mado.name = ev.target.value; update(mado) }}
+            placeholder="艦これ（ながらプレイ用）"
+            required={false}
+            onChange={(ev) => {
+              mado.name = ev.target.value;
+              update(mado);
+            }}
           />
-          <MatrixField label="窓のサイズ"
+          <div className="field">
+            <label className="label">攻略・関連ページ</label>
+
+            {mado.subPages.map((page, index) => (
+              <div
+                key={index}
+                className="box"
+                style={{ marginBottom: "0.5rem", padding: "0.75rem" }}
+              >
+                <div className="is-flex is-justify-content-space-between is-align-items-center">
+                  <div>
+                    <strong>{page.name}</strong>
+                    <div className="is-size-7 has-text-grey">{page.url}</div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="button is-small is-danger is-light"
+                    onClick={() => {
+                      mado.subPages.splice(index, 1);
+                      update(mado);
+                    }}
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="field">
+              <label className="label is-small">ページURL</label>
+              <div className="control">
+                <input
+                  className="input"
+                  type="url"
+                  value={subPageUrl}
+                  placeholder="https://example.com/wiki"
+                  onChange={(ev) => setSubPageUrl(ev.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="label is-small">ページ名</label>
+              <div className="control">
+                <input
+                  className="input"
+                  type="text"
+                  value={subPageName}
+                  placeholder="攻略Wiki"
+                  onChange={(ev) => setSubPageName(ev.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="button is-link is-light"
+              disabled={!subPageName.trim() || !subPageUrl.trim()}
+              onClick={() => {
+                const url = subPageUrl.trim();
+
+                let iconUrl = "";
+
+                try {
+                  const parsed = new URL(url);
+                  iconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(parsed.hostname)}&sz=64`;
+                } catch {
+                  // URLが不正ならアイコンなし
+                }
+
+                mado.subPages.push({
+                  name: subPageName.trim(),
+                  url,
+                  iconUrl,
+                  width: 1200,
+                  height: 720,
+                });
+
+                update(mado);
+
+                setSubPageName("");
+                setSubPageUrl("");
+              }}
+            >
+              <span className="icon">
+                <i className="fa fa-plus" />
+              </span>
+              <span>ページを追加</span>
+            </button>
+          </div>
+          <MatrixField
+            label="窓のサイズ"
             items={[
-              { label: "横幅", key: "width", icon: "fa fa-arrows-h", placeholder: 1200, defaultValue: mado.size.width },
-              { label: "高さ", key: "height", icon: "fa fa-arrows-v", placeholder: 720, defaultValue: mado.size.height },
+              {
+                label: "横幅",
+                key: "width",
+                icon: "fa fa-arrows-h",
+                placeholder: 1200,
+                defaultValue: mado.size.width,
+              },
+              {
+                label: "高さ",
+                key: "height",
+                icon: "fa fa-arrows-v",
+                placeholder: 720,
+                defaultValue: mado.size.height,
+              },
             ]}
-            onChange={(ev, key: "width" | "height") => { mado.size[key] = parseInt(ev.target.value); update(mado) }}
+            onChange={(ev, key: "width" | "height") => {
+              mado.size[key] = parseInt(ev.target.value);
+              update(mado);
+            }}
           />
-          <MatrixField label="窓内コンテンツの意図的ズレ"
+          <MatrixField
+            label="窓内コンテンツの意図的ズレ"
             items={[
-              { label: "右方向", key: "left", icon: "fa fa-long-arrow-right", placeholder: 0, defaultValue: mado.offset.left },
-              { label: "下方向", key: "top", icon: "fa fa-long-arrow-down", placeholder: -76, defaultValue: mado.offset.top },
+              {
+                label: "右方向",
+                key: "left",
+                icon: "fa fa-long-arrow-right",
+                placeholder: 0,
+                defaultValue: mado.offset.left,
+              },
+              {
+                label: "下方向",
+                key: "top",
+                icon: "fa fa-long-arrow-down",
+                placeholder: -76,
+                defaultValue: mado.offset.top,
+              },
             ]}
-            onChange={(ev, key: "left" | "top") => { mado.offset[key] = parseInt(ev.target.value); update(mado) }}
+            onChange={(ev, key: "left" | "top") => {
+              mado.offset[key] = parseInt(ev.target.value);
+              update(mado);
+            }}
           />
-          <ChoiceField name="addressbar" label="アドレスバー表示"
+          <ChoiceField
+            name="addressbar"
+            label="アドレスバー表示"
             defaultValue={mado.addressbar ? "1" : "0"}
-            onChange={(ev) => { mado.addressbar = ev.target.value == "1"; update(mado) }}
+            onChange={(ev) => {
+              mado.addressbar = ev.target.value == "1";
+              update(mado);
+            }}
           />
-          <ChoiceField name="showScroll" label="スクロールバー表示"
+          <ChoiceField
+            name="showScroll"
+            label="スクロールバー表示"
             defaultValue={mado.showScroll ? "1" : "0"}
-            onChange={(ev) => { mado.showScroll = ev.target.value == "1"; update(mado) }}
+            onChange={(ev) => {
+              mado.showScroll = ev.target.value == "1";
+              update(mado);
+            }}
           />
-          <ChoiceField name="showLauncherCard" label="カード表示"
+          <ChoiceField
+            name="showLauncherCard"
+            label="カード表示"
             defaultValue={mado.showLauncherCard ? "1" : "0"}
-            onChange={(ev) => { mado.showLauncherCard = ev.target.value == "1"; update(mado) }}
+            onChange={(ev) => {
+              mado.showLauncherCard = ev.target.value == "1";
+              update(mado);
+            }}
           />
-          <InputField label="ズーム倍率" type="number" icon="fa fa-search" help="" placeholder="0.5"
+          <InputField
+            label="ズーム倍率"
+            type="number"
+            icon="fa fa-search"
+            help=""
+            placeholder="0.5"
             defaultValue={mado.zoom}
-            onChange={ev => { mado.zoom = parseFloat(ev.target.value); update(mado) }}
+            onChange={(ev) => {
+              mado.zoom = parseFloat(ev.target.value);
+              update(mado);
+            }}
           />
-          <ColorField label="窓の色（管理用）"
+          <ColorField
+            label="窓の色（管理用）"
             value={mado.colorcode}
-            onChange={ev => { mado.colorcode = ev.target.value; update(mado) }}
+            onChange={(ev) => {
+              mado.colorcode = ev.target.value;
+              update(mado);
+            }}
           />
 
           <MadoAdvancedConfigs
-            mado={mado} update={update}
-            active={showAdvanced} toggle={() => setShowAdvanced(!showAdvanced)}
+            mado={mado}
+            update={update}
+            active={showAdvanced}
+            toggle={() => setShowAdvanced(!showAdvanced)}
           />
-
         </section>
         <footer className="modal-card-foot">
           <div className="buttons">
-            <button className="button is-success" disabled={!mado.hasValidURL()}
+            <button
+              className="button is-success"
+              disabled={!mado.hasValidURL()}
               onClick={async () => {
                 const yes = await perm.ensure(mado.url, fallback);
                 if (!yes) return;
                 await mado.save();
-                cleanup(); refresh();
+                cleanup();
+                refresh();
               }}
-            >これでよし</button>
-            <button className="button" onClick={() => cleanup()}
-            >やっぱりやめる</button>
-            <button className="button is-warning"
+            >
+              これでよし
+            </button>
+            <button className="button" onClick={() => cleanup()}>
+              やっぱりやめる
+            </button>
+            <button
+              className="button is-warning"
               disabled={!mado.hasValidURL() || !mado._id}
               title={mado._id ? "" : "画面内設定は保存後に利用できます"}
               onClick={async () => {
                 const yes = await perm.ensure(mado.url, fallback);
                 if (yes) await launcher.launch(mado, LaunchMode.DYNAMIC);
               }}
-            >画面内設定を開く</button>
-            <button className="button is-info" disabled={!mado.hasValidURL()}
+            >
+              画面内設定を開く
+            </button>
+            <button
+              className="button is-info"
+              disabled={!mado.hasValidURL()}
               onClick={async () => {
                 const yes = await perm.ensure(mado.url, fallback);
                 if (yes) await launcher.launch(mado, LaunchMode.PREVIEW);
               }}
-            >試しに開く</button>
-            {!mado._id && <p className="help">※ 窓の新規登録は保存後に画面内設定を利用できます</p>}
+            >
+              試しに開く
+            </button>
+            {!mado._id && (
+              <p className="help">
+                ※ 窓の新規登録は保存後に画面内設定を利用できます
+              </p>
+            )}
           </div>
         </footer>
       </div>

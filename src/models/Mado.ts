@@ -1,12 +1,16 @@
-import { Model, Types } from 'jstorm/chrome/local';
-import { Schema } from 'jstorm/model';
+import { Model, Types } from "jstorm/chrome/local";
+import { Schema } from "jstorm/model";
 
 interface MadoExistanceHydrator {
-  retrieve(mado: Mado): Promise<{ win: chrome.windows.Window, tab: chrome.tabs.Tab, mado: Mado } | null>;
+  retrieve(mado: Mado): Promise<{
+    win: chrome.windows.Window;
+    tab: chrome.tabs.Tab;
+    mado: Mado;
+  } | null>;
   permitted(mado: Mado): Promise<boolean>;
 }
 
-export interface MadoLikeParams extends MadoSize, MadoOffset, MadoZoom { }
+export interface MadoLikeParams extends MadoSize, MadoOffset, MadoZoom {}
 interface MadoSize {
   width: number;
   height: number;
@@ -18,18 +22,28 @@ interface MadoOffset {
 interface MadoZoom {
   zoom: number;
 }
-
+export interface MadoSubPage {
+  name: string;
+  url: string;
+  iconUrl?: string;
+  width: number;
+  height: number;
+  left?: number;
+  top?: number;
+}
 export interface PortableJSONObject {
   version: string;
   timestamp: number;
   mados: MadoPortableObject[];
 }
 
-export interface MadoPortableObject extends MadoBasicInfo, MadoAdvancedInfo, MadoColorable, MadoZoom {
+export interface MadoPortableObject
+  extends MadoBasicInfo, MadoAdvancedInfo, MadoColorable, MadoZoom {
   size: MadoSize;
   offset: MadoOffset;
   showScroll?: boolean;
   showLauncherCard?: boolean;
+  subPages?: MadoSubPage[];
 }
 
 interface MadoBasicInfo {
@@ -48,11 +62,11 @@ interface MadoAdvancedInfo {
 }
 
 const defaultColorSet = [
-  '#00D1B2',
-  '#4258FF',
-  '#66D1FF',
-  '#FFB70F',
-  '#FF6685',
+  "#00D1B2",
+  "#4258FF",
+  "#66D1FF",
+  "#FFB70F",
+  "#FF6685",
   // '#2B2D42',
   // '#E86A92',
   // '#F7E733',
@@ -61,7 +75,7 @@ const defaultColorSet = [
 ];
 
 export default class Mado extends Model {
-  static override _namespace_ = 'Mado';
+  static override _namespace_ = "Mado";
   static override _nextID_ = () => Math.random().toString(36).slice(2);
 
   static override schema: Schema = {
@@ -76,7 +90,7 @@ export default class Mado extends Model {
     url: Types.string.isRequired,
     // 窓サイズ
     size: Types.shape({
-      width:  Types.number.isRequired,
+      width: Types.number.isRequired,
       height: Types.number.isRequired,
     }).isRequired,
     // ディスプレイに対するLaunchPosition
@@ -98,11 +112,20 @@ export default class Mado extends Model {
     // 窓コンテンツのずれ
     offset: Types.shape({
       left: Types.number.isRequired,
-      top:  Types.number.isRequired,
+      top: Types.number.isRequired,
     }),
 
     // stylesheet
     stylesheet: Types.string,
+
+    // サブページ
+    subPages: Types.arrayOf(
+      Types.shape({
+        name: Types.string.isRequired,
+        url: Types.string.isRequired,
+        iconUrl: Types.string,
+      }),
+    ),
 
     // 高度なDOM操作 (これ、stylesheetがあれば要らないんじゃね)
     advanced: Types.shape({
@@ -117,10 +140,11 @@ export default class Mado extends Model {
     colorcode: Types.string,
     showScroll: Types.bool,
     showLauncherCard: Types.bool,
-  }
+  };
 
   public name: string = "艦これ（ながらプレイ用）";
-  public url: string = "http://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854";
+  public url: string =
+    "http://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854";
   public size = { width: 1200, height: 720 };
   public position = { x: 20, y: 100 };
   public addressbar: boolean = false;
@@ -131,13 +155,19 @@ export default class Mado extends Model {
   public offset = { left: 0, top: -76 };
 
   public stylesheet: string = `#leftnavi, #dmm-left-navi, .dmm-ntgnavi {\n\tdisplay:none;\n}\n`;
+
+  public subPages: MadoSubPage[] = [];
+
   public advanced = { remove: [] };
 
   public index: number = 0;
   public colorcode: string = "";
 
   // すでに窓がChromeウィンドウ的な文脈で存在するのか、hydrate()によって確認された結果
-  public $existance: { win: chrome.windows.Window, tab: chrome.tabs.Tab } | null = null;
+  public $existance: {
+    win: chrome.windows.Window;
+    tab: chrome.tabs.Tab;
+  } | null = null;
   // このMadoがChrome拡張機能のパーミッションを持っているかどうか、hydrate()によって確認された結果
   public $permitted: boolean = false;
 
@@ -188,12 +218,13 @@ export default class Mado extends Model {
       addressbar: this.addressbar,
       showScroll: this.showScroll,
       showLauncherCard: this.showLauncherCard,
+      subPages: this.subPages,
       size: this.size,
       offset: this.offset,
       zoom: this.zoom,
       colorcode: this.colorcode || undefined,
       stylesheet: this.stylesheet || undefined,
       // advanced: this.advanced,
-    }
+    };
   }
 }

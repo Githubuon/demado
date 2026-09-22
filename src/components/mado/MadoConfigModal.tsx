@@ -28,6 +28,9 @@ export function MadoConfigModal({
 
   const [subPageName, setSubPageName] = useState("");
   const [subPageUrl, setSubPageUrl] = useState("");
+  const [draggedSubPageIndex, setDraggedSubPageIndex] = useState<number | null>(
+    null,
+  );
 
   const perm = useMemo(() => new PermissionService(), []);
   const fallback = () => window.alert("許可がないため、操作できません");
@@ -79,14 +82,59 @@ export function MadoConfigModal({
 
             {mado.subPages.map((page, index) => (
               <div
-                key={index}
+                key={`${page.url}-${index}`}
                 className="box"
-                style={{ marginBottom: "0.5rem", padding: "0.75rem" }}
+                draggable
+                onDragStart={(ev) => {
+                  setDraggedSubPageIndex(index);
+                  ev.dataTransfer.effectAllowed = "move";
+                  ev.dataTransfer.setData("text/plain", String(index));
+                }}
+                onDragOver={(ev) => {
+                  ev.preventDefault();
+                  ev.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(ev) => {
+                  ev.preventDefault();
+
+                  const fromIndex = draggedSubPageIndex;
+                  if (fromIndex === null || fromIndex === index) {
+                    setDraggedSubPageIndex(null);
+                    return;
+                  }
+
+                  const subPages = [...mado.subPages];
+                  const [moved] = subPages.splice(fromIndex, 1);
+                  subPages.splice(index, 0, moved);
+
+                  mado.subPages = subPages;
+                  update(mado);
+
+                  setDraggedSubPageIndex(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedSubPageIndex(null);
+                }}
+                style={{
+                  marginBottom: "0.5rem",
+                  padding: "0.75rem",
+                  cursor: "grab",
+                  opacity: draggedSubPageIndex === index ? 0.5 : 1,
+                }}
               >
                 <div className="is-flex is-justify-content-space-between is-align-items-center">
-                  <div>
-                    <strong>{page.name}</strong>
-                    <div className="is-size-7 has-text-grey">{page.url}</div>
+                  <div className="is-flex is-align-items-center">
+                    <span
+                      className="icon has-text-grey-light mr-2"
+                      title="ドラッグして並び替え"
+                    >
+                      <i className="fa fa-bars" />
+                    </span>
+
+                    <div>
+                      <strong>{page.name}</strong>
+                      <div className="is-size-7 has-text-grey">{page.url}</div>
+                    </div>
                   </div>
 
                   <button

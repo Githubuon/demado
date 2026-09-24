@@ -263,6 +263,8 @@ export function MadoConfigModal({
             name="addressbar"
             label="アドレスバー表示"
             defaultValue={mado.addressbar ? "1" : "0"}
+            offLabel="表示しない"
+            onLabel="あえて表示する"
             onChange={(ev) => {
               mado.addressbar = ev.target.value == "1";
               update(mado);
@@ -272,6 +274,8 @@ export function MadoConfigModal({
             name="showScroll"
             label="スクロールバー表示"
             defaultValue={mado.showScroll ? "1" : "0"}
+            offLabel="表示しない"
+            onLabel="あえて表示する"
             onChange={(ev) => {
               mado.showScroll = ev.target.value == "1";
               update(mado);
@@ -279,8 +283,10 @@ export function MadoConfigModal({
           />
           <ChoiceField
             name="showLauncherCard"
-            label="カード表示"
+            label="「demadoの設定」以外での表示"
             defaultValue={mado.showLauncherCard ? "1" : "0"}
+            offLabel="表示しない"
+            onLabel="表示する"
             onChange={(ev) => {
               mado.showLauncherCard = ev.target.value == "1";
               update(mado);

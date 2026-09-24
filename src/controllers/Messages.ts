@@ -47,7 +47,11 @@ r.on("/mado/launch", async ({ id, mode }: { id: string; mode: LaunchMode }) => {
 
 r.on("/mado/position:track", async (m) => {
   const mado = await Mado.find(m.id);
-  await mado?.update({ position: m.position });
+  if (!mado) return;
+
+  await mado.update({
+    position: m.position,
+  });
 });
 
 r.on(

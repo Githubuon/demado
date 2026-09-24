@@ -1,20 +1,27 @@
 import Mado from "../models/Mado";
 
 export default class WindowService {
-  constructor(
-        private readonly mod: typeof chrome.windows = chrome.windows,
-  ) { }
+  constructor(private readonly mod: typeof chrome.windows = chrome.windows) {}
 
-  create(url: string, options: chrome.windows.CreateData): Promise<chrome.windows.Window> {
+  async create(url: string, options: chrome.windows.CreateData, ): Promise<chrome.windows.Window> {
     // -32000問題の対策
     // https://qiita.com/7of9/items/390ff8c1914e5ff6c68c
     // https://stackoverflow.com/questions/1478765/location-coordinates-on-computer-showing-x-32000-y-32000
     // もうめんどくさいので、-32000という値を直狙いでfallbackします
-    if (options.left === -32000 || options.top === -32000) options.left = options.top = 0;
+    if (options.left === -32000 || options.top === -32000) {
+      options.left = 0;
+      options.top = 0;
+    }
     try {
-      return this.mod.create({ url, ...options });
+      return await this.mod.create({ url, ...options });
     } catch (e) {
-      return this.mod.create({ url, ...options, left: 0, top: 0 });
+      console.warn("[WindowService] Invalid bounds, retrying at 0,0", {
+        url,
+        options,
+        error: e,
+      });
+
+      return await this.mod.create({ url, ...options, left: 0, top: 0 });
     }
   }
 
@@ -32,22 +39,34 @@ export default class WindowService {
     return this.mod.remove(windowId);
   }
 
-  resizeBy(windowId: number, size: { w: number | string, h: number | string }): Promise<chrome.windows.Window> {
-    return new Promise(resolve => {
+  resizeBy(
+    windowId: number,
+    size: { w: number | string; h: number | string },
+  ): Promise<chrome.windows.Window> {
+    return new Promise((resolve) => {
       this.mod.get(windowId, { populate: true }, (win) => {
-        this.mod.update(windowId, {
-          width: win.width! + parseInt(size.w as string),
-          height: win.height! + parseInt(size.h as string),
-        }, resolve);
+        this.mod.update(
+          windowId,
+          {
+            width: win.width! + parseInt(size.w as string),
+            height: win.height! + parseInt(size.h as string),
+          },
+          resolve,
+        );
       });
     });
   }
 
-  get(windowId: number, getInfo: chrome.windows.QueryOptions): Promise<chrome.windows.Window> {
-    return new Promise(resolve => this.mod.get(windowId, getInfo, resolve));
+  get(
+    windowId: number,
+    getInfo: chrome.windows.QueryOptions,
+  ): Promise<chrome.windows.Window> {
+    return new Promise((resolve) => this.mod.get(windowId, getInfo, resolve));
   }
 
   focus(windowId: number): Promise<chrome.windows.Window> {
-    return new Promise(resolve => this.mod.update(windowId, { focused: true }, resolve));
+    return new Promise((resolve) =>
+      this.mod.update(windowId, { focused: true }, resolve),
+    );
   }
 }

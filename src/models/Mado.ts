@@ -26,6 +26,8 @@ export interface MadoSubPage {
   name: string;
   url: string;
   iconUrl?: string;
+  addressbar?: boolean;
+  showScroll?: boolean;
   width: number;
   height: number;
   left?: number;
@@ -124,6 +126,8 @@ export default class Mado extends Model {
         name: Types.string.isRequired,
         url: Types.string.isRequired,
         iconUrl: Types.string,
+        addressbar: Types.bool,
+        showScroll: Types.bool,
       }),
     ),
 

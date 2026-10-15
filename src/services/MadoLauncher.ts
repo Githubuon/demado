@@ -1,5 +1,6 @@
 import Dashboard from "../models/Dashboard";
 import Mado from "../models/Mado";
+import type { MadoSubPage } from "../models/Mado";
 import LaunchHistory from "../models/LaunchHistory";
 import PermissionService from "./PermissionService";
 import ScriptService from "./ScriptService";
@@ -46,15 +47,9 @@ export default class MadoLauncher {
 
   async launchSubPage(
     parentMado: Mado,
-    page: {
-      name: string;
-      url: string;
-      width: number;
-      height: number;
-      left?: number;
-      top?: number;
-    },
+    page: MadoSubPage,
   ): Promise<chrome.windows.Window> {
+    await this.permission.ensure(page.url);
     const mado = new Mado();
 
     mado.name = page.name;
@@ -70,7 +65,8 @@ export default class MadoLauncher {
       y: page.top ?? 100,
     };
 
-    mado.addressbar = true;
+    mado.addressbar = page.addressbar ?? false;
+    mado.showScroll = page.showScroll ?? false;
     mado.zoom = 1;
     mado.offset = {
       left: 0,
@@ -78,6 +74,11 @@ export default class MadoLauncher {
     };
 
 const win = await this.windows.open(mado);
+const tab = win.tabs?.[0];
+
+if (tab?.id !== undefined) {
+  await this.scripting.offset(tab.id, mado.offset, mado.showScroll);
+}
 
 if (win.id !== undefined) {
   chrome.runtime.sendMessage(chrome.runtime.id, {

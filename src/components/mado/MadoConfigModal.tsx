@@ -134,6 +134,28 @@ export function MadoConfigModal({
                     <div>
                       <strong>{page.name}</strong>
                       <div className="is-size-7 has-text-grey">{page.url}</div>
+                      <div className="is-flex is-flex-wrap-wrap mt-2" style={{ gap: "0.75rem" }}>
+                        <label className="checkbox" onClick={(ev) => ev.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={page.addressbar ?? false}
+                            onChange={(ev) => {
+                              mado.subPages[index] = { ...page, addressbar: ev.target.checked };
+                              update(mado);
+                            }}
+                          /> {" "}アドレスバーを表示
+                        </label>
+                        <label className="checkbox" onClick={(ev) => ev.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={page.showScroll ?? false}
+                            onChange={(ev) => {
+                              mado.subPages[index] = { ...page, showScroll: ev.target.checked };
+                              update(mado);
+                            }}
+                          /> {" "}スクロールバーを表示
+                        </label>
+                      </div>
                     </div>
                   </div>
 
@@ -197,6 +219,8 @@ export function MadoConfigModal({
                   name: subPageName.trim(),
                   url,
                   iconUrl,
+                  addressbar: false,
+                  showScroll: false,
                   width: 1200,
                   height: 720,
                 });

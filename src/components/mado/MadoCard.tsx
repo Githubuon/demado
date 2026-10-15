@@ -33,20 +33,18 @@ function PreviewLaunchIcon({mado, launcher}: {mado: Mado, launcher: MadoLauncher
   )
 }
 
-function SubPageIcon({ page }: {
-  page: {
-    name: string;
-    url: string;
-    iconUrl?: string;
-  }
+function SubPageIcon({ page, mado, launcher }: {
+  page: Mado["subPages"][number];
+  mado: Mado;
+  launcher: MadoLauncher;
 }) {
   return (
     <div
       className="icon is-clickable"
       title={page.name}
-      onClick={(ev) => {
+      onClick={async (ev) => {
         ev.stopPropagation();
-        window.open(page.url, "_blank");
+        await launcher.launchSubPage(mado, page);
       }}
     >
       {page.iconUrl ? (
@@ -102,6 +100,8 @@ export function MadoCard({
     <SubPageIcon
       key={`${page.url}-${index}`}
       page={page}
+      mado={mado}
+      launcher={launcher}
     />
   ))}
   

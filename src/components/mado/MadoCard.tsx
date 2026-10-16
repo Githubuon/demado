@@ -1,11 +1,102 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Mado from "../../models/Mado";
 import type MadoLauncher from "../../services/MadoLauncher";
 import PermissionService from "../../services/PermissionService";
 import { useNavigate } from "react-router-dom";
 
-function BasicInformationTag({ name, value }: { name: string, value: string | number }) {
-  return <span className="tag is-info is-light">{name}: {value}</span>;
+function EditableNumberTag({
+  name,
+  value,
+  step = 1,
+  onSave,
+}: {
+  name: string;
+  value: number;
+  step?: number;
+  onSave: (value: number) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+
+  const commit = async () => {
+    if (!draft.trim()) {
+      setEditing(false);
+      return;
+    }
+    const nextValue = Number(draft);
+    setEditing(false);
+    if (!Number.isFinite(nextValue) || nextValue === value) return;
+    await onSave(nextValue);
+  };
+
+  if (editing) {
+    return (
+      <span className="tag is-info is-light" onClick={(ev) => ev.stopPropagation()}>
+        <label>
+          {name}: <input
+            autoFocus
+            aria-label={name}
+            type="number"
+            step={step}
+            value={draft}
+            style={{ width: "5.5em" }}
+            onChange={(ev) => setDraft(ev.target.value)}
+            onBlur={() => { void commit(); }}
+            onKeyDown={(ev) => {
+              ev.stopPropagation();
+              if (ev.key === "Enter") ev.currentTarget.blur();
+              if (ev.key === "Escape") {
+                setDraft(String(value));
+                setEditing(false);
+              }
+            }}
+          />
+        </label>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="tag is-info is-light"
+      title={`${name}をクリックして変更`}
+      onClick={(ev) => {
+        ev.stopPropagation();
+        setDraft(String(value));
+        setEditing(true);
+      }}
+      onKeyDown={(ev) => ev.stopPropagation()}
+    >
+      {name}: {value}
+    </button>
+  );
+}
+
+function ToggleInformationTag({
+  name,
+  value,
+  onToggle,
+}: {
+  name: string;
+  value: boolean;
+  onToggle: () => Promise<void>;
+}) {
+  return (
+    <button
+      type="button"
+      className={`tag ${value ? "is-success" : "is-light"}`}
+      aria-pressed={value}
+      title={`${name}をクリックして切り替え`}
+      onClick={(ev) => {
+        ev.stopPropagation();
+        void onToggle();
+      }}
+      onKeyDown={(ev) => ev.stopPropagation()}
+    >
+      {name}: {value ? "表示" : "非表示"}
+    </button>
+  );
 }
 
 function PermissionAlertIcon({ mado }: { mado: Mado }) {
@@ -116,17 +207,31 @@ export function MadoCard({
       <div className="card-content">
         <div className="content is-size-7">
           <div style={{ wordBreak: 'break-all' }}>{mado.url}</div>
-          <div>
-            {[
-              { name: "横幅", value: mado.size.width },
-              { name: "高さ", value: mado.size.height },
-              { name: "横ずれ", value: mado.offset.left },
-              { name: "縦ずれ", value: mado.offset.top },
-              { name: "ズーム", value: mado.zoom },
-              { name: "アドレスバー", value: mado.addressbar ? "表示" : "非表示" },
-              { name: "スクロールバー", value: mado.showScroll ? "表示" : "非表示" },
-              { name: "カード", value: mado.showLauncherCard ? "表示" : "非表示" },
-            ].map(({ name, value }) => <BasicInformationTag key={name} name={name} value={value} />)}
+          <div className="is-flex is-flex-wrap-wrap" style={{ gap: "0.25rem" }}>
+            <EditableNumberTag name="横幅" value={mado.size.width} onSave={async (value) => {
+              await mado.update({ size: { ...mado.size, width: value } }); refresh();
+            }} />
+            <EditableNumberTag name="高さ" value={mado.size.height} onSave={async (value) => {
+              await mado.update({ size: { ...mado.size, height: value } }); refresh();
+            }} />
+            <EditableNumberTag name="横ずれ" value={mado.offset.left} onSave={async (value) => {
+              await mado.update({ offset: { ...mado.offset, left: value } }); refresh();
+            }} />
+            <EditableNumberTag name="縦ずれ" value={mado.offset.top} onSave={async (value) => {
+              await mado.update({ offset: { ...mado.offset, top: value } }); refresh();
+            }} />
+            <EditableNumberTag name="ズーム" value={mado.zoom} step={0.05} onSave={async (value) => {
+              await mado.update({ zoom: value }); refresh();
+            }} />
+            <ToggleInformationTag name="アドレスバー" value={mado.addressbar} onToggle={async () => {
+              await mado.update({ addressbar: !mado.addressbar }); refresh();
+            }} />
+            <ToggleInformationTag name="スクロールバー" value={mado.showScroll} onToggle={async () => {
+              await mado.update({ showScroll: !mado.showScroll }); refresh();
+            }} />
+            <ToggleInformationTag name="カード" value={mado.showLauncherCard} onToggle={async () => {
+              await mado.update({ showLauncherCard: !mado.showLauncherCard }); refresh();
+            }} />
           </div>
           <div className="control">
             <div className="tags has-addons">

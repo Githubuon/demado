@@ -8,6 +8,7 @@ import { InputField } from "../form/InputField";
 import { ColorField } from "../form/ColorField";
 import { MadoAdvancedConfigs } from "./MadoAdvancedConfigs";
 import { LaunchMode } from "../../services/MadoLauncher";
+import { extractPageFaviconUrl, FaviconImage, siteFaviconUrl } from "./FaviconImage";
 
 export function MadoConfigModal({
   active,
@@ -78,6 +79,44 @@ export function MadoConfigModal({
             }}
           />
           <div className="field">
+            <label className="label">窓のアイコン</label>
+            <p className="help mb-2">窓のURLから取得した favicon を使うか、画像ファイルを選べます。</p>
+            <div className="is-flex is-align-items-center" style={{ gap: "0.75rem" }}>
+              {mado.iconUrl === "" ? <span className="icon"><i className="fa fa-globe" /></span> : mado.iconUrl || siteFaviconUrl(mado.url) ? <FaviconImage pageUrl={mado.url} iconUrl={mado.iconUrl} alt="窓のアイコン" style={{ width: 32, height: 32, objectFit: "contain" }} /> : <span className="icon"><i className="fa fa-globe" /></span>}
+              <button type="button" className="button is-small" onClick={async () => {
+                try {
+                  const parsed = new URL(mado.url);
+                  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+                    mado.iconUrl = await extractPageFaviconUrl(mado.url);
+                    update(mado);
+                  }
+                } catch { /* URLが有効になるまで何もしない */ }
+              }}>URLから取得</button>
+              <label className="button is-small">
+                ファイルを選択
+                <input
+                  type="file"
+                  accept="image/*,.ico"
+                  hidden
+                  onChange={(ev) => {
+                    const file = ev.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === "string") {
+                        mado.iconUrl = reader.result;
+                        update(mado);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                    ev.target.value = "";
+                  }}
+                />
+              </label>
+              {mado.iconUrl && <button type="button" className="button is-small is-light" onClick={() => { mado.iconUrl = ""; update(mado); }}>クリア</button>}
+            </div>
+          </div>
+          <div className="field">
             <label className="label">攻略・関連ページ</label>
 
             {mado.subPages.map((page, index) => (
@@ -134,6 +173,46 @@ export function MadoConfigModal({
                     <div>
                       <strong>{page.name}</strong>
                       <div className="is-size-7 has-text-grey">{page.url}</div>
+                      <div className="is-flex is-align-items-center mt-2" style={{ gap: "0.5rem" }}>
+                        {page.iconUrl === "" ? (
+                          <span className="icon has-text-grey"><i className="fa fa-globe" /></span>
+                        ) : page.iconUrl || siteFaviconUrl(page.url) ? (
+                          <FaviconImage pageUrl={page.url} iconUrl={page.iconUrl} style={{ width: 20, height: 20, objectFit: "contain" }} />
+                        ) : <span className="icon has-text-grey"><i className="fa fa-globe" /></span>}
+                        <label className="button is-small">
+                          アイコンを選択
+                          <input
+                            type="file"
+                            accept="image/*,.ico"
+                            hidden
+                            onChange={(ev) => {
+                              const file = ev.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === "string") {
+                                  mado.subPages[index] = { ...page, iconUrl: reader.result };
+                                  update(mado);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                              ev.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {page.iconUrl && (
+                          <button
+                            type="button"
+                            className="button is-small is-light"
+                            onClick={() => {
+                              mado.subPages[index] = { ...page, iconUrl: "" };
+                              update(mado);
+                            }}
+                          >
+                            アイコンをクリア
+                          </button>
+                        )}
+                      </div>
                       <div className="is-flex is-flex-wrap-wrap mt-2" style={{ gap: "0.75rem" }}>
                         <label className="checkbox" onClick={(ev) => ev.stopPropagation()}>
                           <input
@@ -203,14 +282,16 @@ export function MadoConfigModal({
               type="button"
               className="button is-link is-light"
               disabled={!subPageName.trim() || !subPageUrl.trim()}
-              onClick={() => {
+              onClick={async () => {
                 const url = subPageUrl.trim();
 
-                let iconUrl = "";
+                let iconUrl: string | undefined;
 
                 try {
                   const parsed = new URL(url);
-                  iconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(parsed.hostname)}&sz=64`;
+                  if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+                    iconUrl = await extractPageFaviconUrl(url);
+                  }
                 } catch {
                   // URLが不正ならアイコンなし
                 }
@@ -313,6 +394,17 @@ export function MadoConfigModal({
             onLabel="表示する"
             onChange={(ev) => {
               mado.showLauncherCard = ev.target.value == "1";
+              update(mado);
+            }}
+          />
+          <ChoiceField
+            name="showIcon"
+            label="アイコン表示"
+            defaultValue={mado.showIcon === false ? "0" : "1"}
+            offLabel="表示しない"
+            onLabel="表示する"
+            onChange={(ev) => {
+              mado.showIcon = ev.target.value === "1";
               update(mado);
             }}
           />

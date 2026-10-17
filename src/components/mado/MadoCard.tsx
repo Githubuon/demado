@@ -3,16 +3,19 @@ import Mado from "../../models/Mado";
 import type MadoLauncher from "../../services/MadoLauncher";
 import PermissionService from "../../services/PermissionService";
 import { useNavigate } from "react-router-dom";
+import { FaviconImage, siteFaviconUrl } from "./FaviconImage";
 
 function EditableNumberTag({
   name,
   value,
   step = 1,
+  min,
   onSave,
 }: {
   name: string;
   value: number;
   step?: number;
+  min?: number;
   onSave: (value: number) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -25,7 +28,7 @@ function EditableNumberTag({
     }
     const nextValue = Number(draft);
     setEditing(false);
-    if (!Number.isFinite(nextValue) || nextValue === value) return;
+    if (!Number.isFinite(nextValue) || (min !== undefined && nextValue < min) || nextValue === value) return;
     await onSave(nextValue);
   };
 
@@ -38,6 +41,7 @@ function EditableNumberTag({
             aria-label={name}
             type="number"
             step={step}
+            min={min}
             value={draft}
             style={{ width: "5.5em" }}
             onChange={(ev) => setDraft(ev.target.value)}
@@ -138,9 +142,12 @@ function SubPageIcon({ page, mado, launcher }: {
         await launcher.launchSubPage(mado, page);
       }}
     >
-      {page.iconUrl ? (
-        <img
-          src={page.iconUrl}
+      {page.iconUrl === "" ? (
+        <i className="fa fa-globe" />
+      ) : page.iconUrl || siteFaviconUrl(page.url) ? (
+        <FaviconImage
+          pageUrl={page.url}
+          iconUrl={page.iconUrl}
           alt={page.name}
           style={{
             width: "20px",
@@ -169,6 +176,7 @@ export function MadoCard({
   onDragOver?: (ev: React.DragEvent<HTMLDivElement>) => void,
  }) {
   const bgcolor = mado.colorcodeByIndex(index);
+  const hasCardIcon = mado.iconUrl || siteFaviconUrl(mado.url);
   const [r, g, b] = bgcolor.replace(/^#/, "").match(/[a-zA-Z0-9]{2}/g)!.map(hex => parseInt(hex, 16));
   const textcolor = (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? "has-text-dark" : "has-text-light";
   return (
@@ -185,6 +193,11 @@ export function MadoCard({
     >
       <div className={"card-header"} style={{ backgroundColor: bgcolor }}>
 <p className={"card-header-title level " + textcolor}>
+  {mado.showIcon !== false && mado.iconUrl === "" ? (
+    <i className="fa fa-globe" style={{ marginRight: "0.5rem" }} />
+  ) : mado.showIcon !== false && hasCardIcon ? (
+    <FaviconImage pageUrl={mado.url} iconUrl={mado.iconUrl} style={{ width: 20, height: 20, objectFit: "contain", marginRight: "0.5rem" }} />
+  ) : null}
   <span className={textcolor}>{mado.displayName()}</span>
 
   {mado.subPages.map((page, index) => (
@@ -208,10 +221,10 @@ export function MadoCard({
         <div className="content is-size-7">
           <div style={{ wordBreak: 'break-all' }}>{mado.url}</div>
           <div className="is-flex is-flex-wrap-wrap" style={{ gap: "0.25rem" }}>
-            <EditableNumberTag name="横幅" value={mado.size.width} onSave={async (value) => {
+            <EditableNumberTag name="横幅" value={mado.size.width} min={1} onSave={async (value) => {
               await mado.update({ size: { ...mado.size, width: value } }); refresh();
             }} />
-            <EditableNumberTag name="高さ" value={mado.size.height} onSave={async (value) => {
+            <EditableNumberTag name="高さ" value={mado.size.height} min={1} onSave={async (value) => {
               await mado.update({ size: { ...mado.size, height: value } }); refresh();
             }} />
             <EditableNumberTag name="横ずれ" value={mado.offset.left} onSave={async (value) => {
@@ -220,7 +233,7 @@ export function MadoCard({
             <EditableNumberTag name="縦ずれ" value={mado.offset.top} onSave={async (value) => {
               await mado.update({ offset: { ...mado.offset, top: value } }); refresh();
             }} />
-            <EditableNumberTag name="ズーム" value={mado.zoom} step={0.05} onSave={async (value) => {
+            <EditableNumberTag name="ズーム" value={mado.zoom} step={0.05} min={0.1} onSave={async (value) => {
               await mado.update({ zoom: value }); refresh();
             }} />
             <ToggleInformationTag name="アドレスバー" value={mado.addressbar} onToggle={async () => {
@@ -231,6 +244,9 @@ export function MadoCard({
             }} />
             <ToggleInformationTag name="カード" value={mado.showLauncherCard} onToggle={async () => {
               await mado.update({ showLauncherCard: !mado.showLauncherCard }); refresh();
+            }} />
+            <ToggleInformationTag name="アイコン" value={mado.showIcon !== false} onToggle={async () => {
+              await mado.update({ showIcon: !(mado.showIcon !== false) }); refresh();
             }} />
           </div>
           <div className="control">

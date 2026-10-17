@@ -15,13 +15,15 @@ export default class WindowService {
     try {
       return await this.mod.create({ url, ...options });
     } catch (e) {
-      console.warn("[WindowService] Invalid bounds, retrying at 0,0", {
+      console.warn("[WindowService] Invalid bounds, retrying with default bounds", {
         url,
         options,
         error: e,
       });
 
-      return await this.mod.create({ url, ...options, left: 0, top: 0 });
+      // Discard all configured bounds on retry: the size may itself be invalid,
+      // and (0, 0) may be off-screen on a multi-display setup.
+      return await this.mod.create({ url, type: options.type });
     }
   }
 

@@ -45,12 +45,14 @@ export interface MadoPortableObject
   offset: MadoOffset;
   showScroll?: boolean;
   showLauncherCard?: boolean;
+  showIcon?: boolean;
   subPages?: MadoSubPage[];
 }
 
 interface MadoBasicInfo {
   url: string;
   name: string;
+  iconUrl?: string;
   addressbar: boolean;
 }
 interface MadoColorable {
@@ -90,6 +92,8 @@ export default class Mado extends Model {
      **/
     // ウェブページURL
     url: Types.string.isRequired,
+    // 窓カードのアイコン（Web favicon またはカスタム画像）
+    iconUrl: Types.string,
     // 窓サイズ
     size: Types.shape({
       width: Types.number.isRequired,
@@ -144,16 +148,19 @@ export default class Mado extends Model {
     colorcode: Types.string,
     showScroll: Types.bool,
     showLauncherCard: Types.bool,
+    showIcon: Types.bool,
   };
 
   public name: string = "艦これ（ながらプレイ用）";
   public url: string =
     "http://www.dmm.com/netgame/social/-/gadgets/=/app_id=854854";
+  public iconUrl?: string;
   public size = { width: 1200, height: 720 };
   public position = { x: 20, y: 100 };
   public addressbar: boolean = false;
   public showScroll: boolean = false;
   public showLauncherCard: boolean = true;
+  public showIcon: boolean = true;
 
   public zoom: number = 0.5;
   public offset = { left: 0, top: -76 };
@@ -219,9 +226,11 @@ export default class Mado extends Model {
     return {
       url: this.url,
       name: this.name,
+      iconUrl: this.iconUrl,
       addressbar: this.addressbar,
       showScroll: this.showScroll,
       showLauncherCard: this.showLauncherCard,
+      showIcon: this.showIcon,
       subPages: this.subPages,
       size: this.size,
       offset: this.offset,

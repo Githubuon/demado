@@ -1,5 +1,46 @@
 # demado
 
+## 改良版について
+
+このリポジトリは、[otiai10/demado](https://github.com/otiai10/demado) をベースに、独自の改良を加えたバージョンです。
+
+### 変更点
+
+- 各種アイコンの表示。基本は自動取得しますが無い場合は各自で用意。登録さえしてしまえばBase64で記録されます。
+- ゲームごとに攻略Wikiや参考サイトなどを複数登録でき、アイコンから別窓で開く機能を追加。（攻略・関連ページ　またはサブページ）
+- スクロールバーの表示・非表示を設定できるように変更。
+- ダッシュボードでの表示・非表示を設定できるように変更。（カード表示）
+- demadoの設定から値の変更をできるように。
+＊上記の設定もエクスポートファイルに含まれます。
+
+- 非力PCだからかリサイズに失敗することがあるのでリサイズタイミングに少し余裕をもたせた。
+
+### オリジナルプロジェクト
+
+- 原作者: Hiromu OCHIAI
+- オリジナルリポジトリ: https://github.com/otiai10/demado
+- ライセンス: GNU General Public License v3.0 (GPL-3.0)
+
+この改良版は、オリジナルプロジェクトをベースに開発されています。
+オリジナルの著作権表示およびライセンス条件は引き継がれます。
+
+---
+
+### リリース
+
+1. `package.json` のバージョンを更新する。
+2. `pnpm build` を実行して、ビルドが成功することを確認する。
+3. `dist` フォルダの内容をZIPファイルにまとめる。
+4. 変更内容をGitHubにpushする。
+5. GitHub Releasesで新しいリリースを作成し、ビルド済みZIPを添付する。
+
+---
+
+## オリジナルのREADME
+
+以下はオリジナルプロジェクトのREADMEです。
+
+
 [![Dependabot Updates](https://github.com/otiai10/demado/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/otiai10/demado/actions/workflows/dependabot/dependabot-updates)
 [![Node.js CI](https://github.com/otiai10/demado/actions/workflows/node-ci.yaml/badge.svg)](https://github.com/otiai10/demado/actions/workflows/node-ci.yaml)
 [![codecov](https://codecov.io/gh/otiai10/demado/graph/badge.svg?token=2vdGdzZZkq)](https://codecov.io/gh/otiai10/demado)

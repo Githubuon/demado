@@ -5,6 +5,7 @@ import PermissionService from "../../services/PermissionService";
 import CaptureService from "../../services/CaptureService";
 import type GlobalConfig from "../../models/GlobalConfig";
 import { ReleaseNoteObject } from "../info/ReleaseNote";
+import { FaviconImage, siteFaviconUrl } from "../mado/FaviconImage";
 
 export function MuteButton({
   mado,
@@ -87,9 +88,12 @@ function SubPageButton({
         await launcher.launchSubPage(mado, page);
       }}
     >
-      {page.iconUrl ? (
-        <img
-          src={page.iconUrl}
+      {page.iconUrl === "" ? (
+        <i className="fa fa-globe" />
+      ) : page.iconUrl || siteFaviconUrl(page.url) ? (
+        <FaviconImage
+          pageUrl={page.url}
+          iconUrl={page.iconUrl}
           alt={page.name}
           style={{
             width: "20px",
@@ -135,7 +139,22 @@ export function ShortMadoCard({
     >
       <div className="columns is-mobile">
         <div className="column">
-          {mado.displayName()}
+          <span
+            className="is-align-items-center"
+            style={{ display: "inline-flex", verticalAlign: "middle", gap: "0.5rem" }}
+          >
+            {mado.showIcon !== false && mado.iconUrl === "" ? (
+              <i className="fa fa-globe" style={{ flexShrink: 0 }} />
+            ) : mado.showIcon !== false && (mado.iconUrl || siteFaviconUrl(mado.url)) && (
+              <FaviconImage
+                pageUrl={mado.url}
+                iconUrl={mado.iconUrl}
+                alt=""
+                style={{ width: 20, height: 20, objectFit: "contain", flexShrink: 0 }}
+              />
+            )}
+            <span>{mado.displayName()}</span>
+          </span>
 
           {mado.subPages.map((page, index) => (
             <SubPageButton

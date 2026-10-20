@@ -54,8 +54,20 @@ export default class TabService {
     },
     reopen: async (params: Record<string, unknown> = {}) => {
       const tabs = await this.options.find();
-      await this.mod.remove(tabs.map(tab => tab.id!));
-      return await this.options.open(params);
+      const url = new URL(chrome.runtime.getURL("index.html"));
+      url.search = new URLSearchParams(params as Record<string, string>).toString();
+      url.hash = "#options";
+
+      // Keep the existing options tab/window so returning from the in-page
+      // configuration does not create a second settings window.
+      const [tab, ...duplicates] = tabs;
+      if (duplicates.length > 0) {
+        await this.mod.remove(duplicates.map(duplicate => duplicate.id!));
+      }
+      if (tab?.id !== undefined) {
+        return await this.mod.update(tab.id, { url: url.toString(), active: true });
+      }
+      return await this.mod.create({ url: url.toString(), active: true });
     },
   }
 

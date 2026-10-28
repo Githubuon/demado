@@ -1,5 +1,7 @@
 
 export default class ScriptService {
+  private static offsetStyles = new Map<number, string>();
+
   constructor(
     private readonly mod: typeof chrome.scripting = chrome.scripting,
   ) { }
@@ -24,22 +26,39 @@ export default class ScriptService {
     return this.mod.insertCSS({
       target: { tabId },
       css,
+      origin: "USER",
     });
   }
 
-  offset(tabId: number, offset: { left: number, top: number }, showScroll: boolean): Promise<void> {
-    return this.mod.insertCSS({
+  async offset(tabId: number, offset: { left: number, top: number }, showScroll: boolean): Promise<void> {
+    const previousCss = ScriptService.offsetStyles.get(tabId);
+    if (previousCss) {
+      try {
+        await this.mod.removeCSS({
+          target: { tabId },
+          css: previousCss,
+          origin: "USER",
+        });
+      } catch {
+        // The previous document may have navigated since its CSS was inserted.
+      }
+    }
+
+    const css = `
+      html {
+        overflow: ${showScroll ? "auto" : "hidden"} !important;
+      }
+      body {
+        position: relative !important;
+        left: ${offset.left}px !important;
+        top: ${offset.top}px !important;
+      }
+    `;
+    await this.mod.insertCSS({
       target: { tabId },
-      css: `
-        html {
-          overflow: ${showScroll ? "auto" : "hidden"} !important;
-        }
-        body {
-          position: relative;
-          left: ${offset.left}px;
-          top: ${offset.top}px;
-        }
-      `,
+      css,
+      origin: "USER",
     });
+    ScriptService.offsetStyles.set(tabId, css);
   }
 }

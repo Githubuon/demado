@@ -4,6 +4,7 @@ import TabService from "../services/TabService";
 import GlobalConfig from "../models/GlobalConfig";
 import WindowService from "../services/WindowService";
 import MadoLauncher, { LaunchMode } from "../services/MadoLauncher";
+import ScriptService from "../services/ScriptService";
 
 const r = new Router<chrome.runtime.ExtensionMessageEvent>();
 const subPageWindows = new Map<number,  { madoId: string; subPageUrl: string;}>();
@@ -70,19 +71,33 @@ r.on(
 
 r.on(
   "/mado/dynamic-config:result",
-  async (m: { mado: string; params: MadoLikeParams }) => {
+  async (m: { mado: string; params: MadoLikeParams; draft?: boolean }) => {
     const mado = await Mado.find(m.mado);
     if (!mado) return; // TODO: エラーハンドリング
     await mado.update(m.params);
     const tabservice = new TabService();
-    await tabservice.options.reopen({ mado: mado._id! });
+    await tabservice.options.reopen({
+      mado: mado._id!,
+      ...(m.draft ? { draft: "1" } : {}),
+    });
   },
 );
 
 r.on("/mado/dynamic-config/zoom:set", async (m: { value: number }, sender) => {
   const tabservice = new TabService();
-  tabservice.zoom.set(sender.tab!.id!, m.value);
+  await tabservice.zoom.set(sender.tab!.id!, m.value);
 });
+
+r.on(
+  "/mado/dynamic-config/offset:set",
+  async (m: { mado: string; offset: { left: number; top: number } }, sender) => {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) return;
+    const mado = await Mado.find(m.mado);
+    if (!mado) return;
+    await new ScriptService().offset(tabId, m.offset, mado.showScroll);
+  },
+);
 
 r.on("/global-config:get", async () => {
   const config = await GlobalConfig.user();
@@ -119,7 +134,7 @@ r.on(
 
 r.on("/mado/zoom:set", async (m: { value: number }, sender) => {
   const tabservice = new TabService();
-  tabservice.zoom.set(sender.tab!.id!, m.value || 1);
+  await tabservice.zoom.set(sender.tab!.id!, m.value || 1);
 });
 
 r.onNotFound(async (m, s) => {

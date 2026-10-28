@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 
+function readHtmlAttribute(tag: string, name: string): string | undefined {
+  const match = tag.match(new RegExp("(^|\\s)" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", "i"));
+  const value = match?.[2] ?? match?.[3] ?? match?.[4];
+  if (!value) return value;
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&apos;|&#39;/gi, "'");
+}
+
 export function siteFaviconUrl(pageUrl: string): string | undefined {
   try {
     const page = new URL(pageUrl);
@@ -37,17 +47,27 @@ export async function extractPageFaviconUrl(pageUrl: string): Promise<string | u
     const timeout = window.setTimeout(() => controller.abort(), 5000);
     let response: Response;
     try {
-      response = await fetch(pageUrl, { credentials: "include", signal: controller.signal });
+      // Do not follow cross-origin login redirects (for example DMM -> accounts.dmm.com).
+      // Reading the redirected document from the extension page is blocked by CORS.
+      response = await fetch(pageUrl, {
+        credentials: "include",
+        redirect: "manual",
+        signal: controller.signal,
+      });
     } finally {
       window.clearTimeout(timeout);
     }
+    if (response.type === "opaqueredirect" || response.type === "opaque") return undefined;
     if (!response.ok) return undefined;
 
     const html = await response.text();
-    const document = new DOMParser().parseFromString(html, "text/html");
-    const iconLink = Array.from(document.querySelectorAll<HTMLLinkElement>("link[rel][href]"))
-      .find((link) => link.rel.toLowerCase().split(/\s+/).includes("icon"));
-    const href = iconLink?.getAttribute("href");
+    const linkTags = html
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .match(/<link\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi) ?? [];
+    const iconTag = linkTags.find((tag) =>
+      (readHtmlAttribute(tag, "rel") ?? "").toLowerCase().split(/\s+/).includes("icon"),
+    );
+    const href = iconTag ? readHtmlAttribute(iconTag, "href") : undefined;
     if (!href) return undefined;
 
     const resolved = new URL(href, response.url || pageUrl);

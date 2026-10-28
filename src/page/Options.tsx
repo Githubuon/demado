@@ -72,6 +72,7 @@ export function OptionsPage() {
   const releasenote = note as unknown as ReleaseNoteObject;
   const { mados, spotlight, config, dashboard } = useLoaderData() as { mados: Mado[], spotlight: Mado | null, config: GlobalConfig, dashboard: Dashboard };
   const [modal, setModal] = React.useState<{ target?: Mado | null, active: boolean }>({ target: spotlight, active: !!spotlight });
+  const isDraft = new URLSearchParams(location.search).get("draft") === "1";
   const navigate = useNavigate();
   const refresh = () => navigate("/options");
   const launcher = new MadoLauncher(new WindowService(), new TabService(), new ScriptService());
@@ -201,6 +202,7 @@ export function OptionsPage() {
       active={modal.active}
       close={() => { setModal({ active: false, target: null }); }}
       mado={modal.target}
+      draft={isDraft}
       update={(mado: Mado) => { setModal({ active: true, target: mado }) }}
       refresh={refresh}
     />,

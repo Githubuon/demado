@@ -24,8 +24,6 @@ export default class MadoLauncher {
     private permission: PermissionService = new PermissionService(),
   ) {}
 
-  private sleepMsForLaunch = 1000; // XXX: これが不要な設計にしたい. LaunchHistoryを使うべきか
-
   public dashboard = {
     open: async () => {
       const tabs = await this.tabs.query({
@@ -95,6 +93,7 @@ return win;
   async launch(
     mado: Mado,
     mode: LaunchMode = LaunchMode.DEFAULT,
+    draft = false,
   ): Promise<chrome.windows.Window> {
     const exists = await this.retrieve(mado);
     if (exists && mode == LaunchMode.DEFAULT) {
@@ -108,12 +107,19 @@ return win;
 
     const win = await this.windows.open(mado);
     const tab = win.tabs![0];
-    await LaunchHistory.create({ _id: tab.id, mado, mode });
+    const historyMado = Mado.new({
+      ...mado.export(),
+      iconUrl: undefined,
+      subPages: mado.subPages.map((page) => ({ ...page, iconUrl: undefined })),
+    }, mado._id || undefined);
+    await LaunchHistory.create({ _id: tab.id, mado: historyMado, mode });
 
-    await sleep(this.sleepMsForLaunch);
+    await this.waitForTabComplete(tab.id!);
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll);
+    if (mado.stylesheet) await this.scripting.style(tab.id!, mado.stylesheet);
     await this.scripting.js(tab.id!, "content-script.js");
 
-    chrome.tabs.sendMessage(tab.id!, {
+    await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
       id: mado._id,
       mado: mado.export(),
@@ -127,16 +133,59 @@ return win;
       // 何らかの方法で現在の設定値をページに継承しなければならない
       await this.scripting.execute(
         tab.id!,
-        function (portablestr) {
+        function (portablestr, draft) {
           // FIXME: ここのkeyはどこかに定義しないとdynamic-confg.jsとの整合性があぶない
-          sessionStorage.setItem("demado_default_config_value", portablestr);
+          const config = JSON.parse(portablestr);
+          config.demadoDraft = draft;
+          sessionStorage.setItem("demado_default_config_value", JSON.stringify(config));
         },
-        [JSON.stringify(mado.export())],
+        [JSON.stringify(mado.export()), draft],
       );
       await this.scripting.js(tab.id!, "dynamic-config.js");
     }
 
     return win;
+  }
+
+  private async waitForTabComplete(tabId: number): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        clearTimeout(timeout);
+        chrome.tabs.onUpdated.removeListener(onUpdated);
+        chrome.tabs.onRemoved.removeListener(onRemoved);
+      };
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const onUpdated = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
+        if (updatedTabId === tabId && changeInfo.status === "complete") finish();
+      };
+      const onRemoved = (removedTabId: number) => {
+        if (removedTabId === tabId) fail(new Error("Tab closed before loading completed"));
+      };
+      const timeout = setTimeout(() => {
+        console.warn(`[MadoLauncher] Tab ${tabId} did not finish loading in time; injecting scripts anyway`);
+        finish();
+      }, 15000);
+
+      chrome.tabs.onUpdated.addListener(onUpdated);
+      chrome.tabs.onRemoved.addListener(onRemoved);
+      void this.tabs.get(tabId).then((tab) => {
+        if (tab?.status === "complete") finish();
+      }).catch((error: unknown) => {
+        fail(error instanceof Error ? error : new Error(String(error)));
+      });
+    });
   }
 
   /**
@@ -149,7 +198,7 @@ return win;
     await this.scripting.execute(
       tab.id!,
       function (ext) {
-        chrome.runtime.sendMessage(ext, {
+        return chrome.runtime.sendMessage(ext, {
           _act_: "/mado/resize",
           frame: {
             outer: { w: window.outerWidth, h: window.outerHeight },
@@ -191,8 +240,7 @@ return win;
   async reactivate(tab: chrome.tabs.Tab, mado: Mado): Promise<void> {
     // ここでは既存のウィンドウを再利用するので、Bazelを考慮したresizeがいらない
     await this.scripting.js(tab.id!, "content-script.js");
-    await sleep(this.sleepMsForLaunch);
-    chrome.tabs.sendMessage(tab.id!, {
+    await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
       id: mado._id,
       mado: mado.export(),

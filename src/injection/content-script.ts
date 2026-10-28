@@ -29,17 +29,6 @@ import { type MadoPortableObject } from "../models/Mado";
       mado = res.mado;
     }
 
-    if (mado.offset) {
-      document.documentElement.style.overflow = mado.showScroll ? "auto" : "hidden";
-      document.body.style.position = "relative";
-      if (mado.offset.left) document.body.style.left = `${mado.offset.left}px`;
-      if (mado.offset.top) document.body.style.top = `${mado.offset.top}px`;
-    }
-    if (mado.stylesheet) {
-      const style = document.createElement("style");
-      style.textContent = mado.stylesheet;
-      document.head.appendChild(style);
-    }
     if (mado.zoom !== 1) {
       await chrome.runtime.sendMessage(chrome.runtime.id, { _act_: "/mado/zoom:set", value: mado.zoom });
     }

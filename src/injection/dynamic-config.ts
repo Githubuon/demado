@@ -9,22 +9,23 @@ import type { MadoPortableObject } from "../models/Mado";
 
   const SPACING = 6;
 
-  const c = JSON.parse(sessionStorage.getItem("demado_default_config_value") || "{}") as MadoPortableObject;
+  const c = JSON.parse(sessionStorage.getItem("demado_default_config_value") || "{}") as MadoPortableObject & { demadoDraft?: boolean };
 
   console.log("[IFNO] Dynamic Config is running");
   const overlay = document.createElement("div");
   overlay.id = "demado-dynamic-config-overlay";
+  const overlayRoot = overlay.attachShadow({ mode: "open" });
   overlay.style.position = "fixed";
   overlay.style.width = "100%";
   overlay.style.height = "100%";
   overlay.style.top = "0";
   overlay.style.left = "0";
   overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-  overlay.style.zIndex = "9999";
+  overlay.style.zIndex = "2147483647";
   overlay.style.display = "flex";
   overlay.style.justifyContent = "center";
   overlay.style.alignItems = "center";
-  document.body.appendChild(overlay);
+  document.documentElement.appendChild(overlay);
 
   const container = document.createElement("div");
   container.id = "demado-dynamic-config-container";
@@ -39,7 +40,7 @@ import type { MadoPortableObject } from "../models/Mado";
   container.style.color = "rgb(41, 29, 0)";
   container.style.display = "flex";
   container.style.flexDirection = "column";
-  overlay.appendChild(container);
+  overlayRoot.appendChild(container);
 
   const head = document.createElement("div");
   container.appendChild(head);
@@ -68,16 +69,23 @@ import type { MadoPortableObject } from "../models/Mado";
   const offsetgroup = __CREATE_GROUP__();
   body.appendChild(offsetgroup);
   const [left, , leftinput] = __CREATE_FILED__("左右方向", c.offset?.left || 0);
-  leftinput.addEventListener("change", (ev) => {
-    const value = parseInt((ev.target as HTMLInputElement).value);
-    document.body.style.left = `${value}px`;
-  });
-  offsetgroup.appendChild(left);
   const [top, , topinput] = __CREATE_FILED__("上下方向", c.offset?.top || 0);
-  topinput.addEventListener("change", (ev) => {
-    const value = parseInt((ev.target as HTMLInputElement).value);
-    document.body.style.top = `${value}px`;
-  });
+  const updateOffset = () => {
+    const value = {
+      left: parseInt(leftinput.value, 10) || 0,
+      top: parseInt(topinput.value, 10) || 0,
+    };
+    const mado = sessionStorage.getItem(`demado_${chrome.runtime.id}_id`);
+    if (!mado) return;
+    void chrome.runtime.sendMessage({
+      _act_: "/mado/dynamic-config/offset:set",
+      mado,
+      offset: value,
+    });
+  };
+  leftinput.addEventListener("change", updateOffset);
+  offsetgroup.appendChild(left);
+  topinput.addEventListener("change", updateOffset);
   offsetgroup.appendChild(top);
   // }}}
 
@@ -120,16 +128,18 @@ import type { MadoPortableObject } from "../models/Mado";
         },
         zoom: parseFloat(zoominput.value),
       },
+      draft: Boolean(c.demadoDraft),
     }, () => {
       window.close();
     })
   });
   foot.appendChild(commit);
 
-  window.onresize = () => {
+  // Preserve the host page's resize handler.
+  window.addEventListener("resize", () => {
     widthinput.value = `${window.innerWidth}`;
     heightinput.value = `${window.innerHeight}`;
-  };
+  });
 
   console.log("[INFO] Overlay created");
 

@@ -32,18 +32,27 @@ export default class TabService {
 
   public options = {
     find: async () => {
-      const tabs = await this.mod.query({ url: chrome.runtime.getURL("index.html") });
+      // URL filters can miss extension pages that have a query string (for
+      // example, ?mado=...) even though they use the same index.html document.
+      const tabs = await this.mod.query({});
       const found: chrome.tabs.Tab[] = [];
       for (let i = 0; i < tabs.length; i++) {
         try {
           const url = new URL(tabs[i].url!);
-          if (url.hash === "#options" || url.hash === "#/options") {
+          const appUrl = new URL(chrome.runtime.getURL("index.html"));
+          const route = url.hash.split("?")[0];
+          if (
+            url.origin === appUrl.origin &&
+            url.pathname === appUrl.pathname &&
+            (route === "#options" || route === "#/options")
+          ) {
             found.push(tabs[i]);
           }
         } catch (e) {
           continue;
         }
       }
+      found.sort((a, b) => Number(Boolean(b.active)) - Number(Boolean(a.active)));
       return found;
     },
     open: async (params: Record<string, unknown> = {}) => {

@@ -37,7 +37,7 @@ export async function onNavigationCommited(details: chrome.webNavigation.WebNavi
     const history = await LaunchHistory.find(`${details.tabId}`);
     if (!history) return;
     if (!compareURL(details.url, history.mado.url)) return;
-    history.delete();
+    await history.delete();
     // console.log(`(demado) %c[INFO]`, "color:white;background-color:blue;", details);
     await launcher.anchor(tab, history.mado, history.mode); // sessionStorageを埋め直す
     const mado = await launcher.lookup(details.tabId);

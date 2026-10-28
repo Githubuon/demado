@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Mado from "../../models/Mado";
+import LaunchHistory from "../../models/LaunchHistory";
 import PermissionService from "../../services/PermissionService";
 import type MadoLauncher from "../../services/MadoLauncher";
 import { ChoiceField } from "../form/ChoiceField";
@@ -10,11 +11,39 @@ import { MadoAdvancedConfigs } from "./MadoAdvancedConfigs";
 import { LaunchMode } from "../../services/MadoLauncher";
 import { extractPageFaviconUrl, FaviconImage, siteFaviconUrl } from "./FaviconImage";
 
+async function readIconFile(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 128 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("アイコン画像を処理できません");
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error("アイコン画像を圧縮できません"));
+    }, "image/webp", 0.82);
+  });
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string"
+      ? resolve(reader.result)
+      : reject(new Error("アイコン画像を読み込めません"));
+    reader.onerror = () => reject(reader.error ?? new Error("アイコン画像を読み込めません"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function MadoConfigModal({
   active,
   close,
   launcher,
   mado,
+  draft = false,
   update,
   refresh,
 }: {
@@ -22,16 +51,24 @@ export function MadoConfigModal({
   close: () => void;
   launcher: MadoLauncher;
   mado?: Mado | null;
+  draft?: boolean;
   update: (mado: Mado) => void;
   refresh: () => void;
 }) {
   const [showAdvanced, setShowAdvanced] = React.useState(true);
+  const [draftStarted, setDraftStarted] = useState(false);
+  const draftMode = draft || draftStarted;
 
   const [subPageName, setSubPageName] = useState("");
   const [subPageUrl, setSubPageUrl] = useState("");
   const [draggedSubPageIndex, setDraggedSubPageIndex] = useState<number | null>(
     null,
   );
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraftStarted(draft);
+  }, [draft, mado]);
 
   const perm = useMemo(() => new PermissionService(), []);
   const fallback = () => window.alert("許可がないため、操作できません");
@@ -48,11 +85,12 @@ export function MadoConfigModal({
       <div className="modal-card">
         <header className="modal-card-head">
           <p className="modal-card-title">
-            {mado._id ? "窓の設定変更" : "窓の新規登録"}
+            {mado._id && !draftMode ? "窓の設定変更" : "窓の新規登録"}
           </p>
           <span className="is-size-6 has-text-grey-light">{mado._id}</span>
         </header>
         <section className="modal-card-body">
+          {saveError && <div className="notification is-danger is-light" role="alert">{saveError}</div>}
           <InputField
             label="窓のURL"
             type="url"
@@ -101,14 +139,12 @@ export function MadoConfigModal({
                   onChange={(ev) => {
                     const file = ev.target.files?.[0];
                     if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      if (typeof reader.result === "string") {
-                        mado.iconUrl = reader.result;
+                    void readIconFile(file).then((iconUrl) => {
+                        mado.iconUrl = iconUrl;
                         update(mado);
-                      }
-                    };
-                    reader.readAsDataURL(file);
+                    }).catch((error: unknown) => {
+                      setSaveError(error instanceof Error ? error.message : "アイコン画像を処理できません");
+                    });
                     ev.target.value = "";
                   }}
                 />
@@ -188,14 +224,12 @@ export function MadoConfigModal({
                             onChange={(ev) => {
                               const file = ev.target.files?.[0];
                               if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                if (typeof reader.result === "string") {
-                                  mado.subPages[index] = { ...page, iconUrl: reader.result };
-                                  update(mado);
-                                }
-                              };
-                              reader.readAsDataURL(file);
+                            void readIconFile(file).then((iconUrl) => {
+                              mado.subPages[index] = { ...page, iconUrl };
+                              update(mado);
+                            }).catch((error: unknown) => {
+                              setSaveError(error instanceof Error ? error.message : "アイコン画像を処理できません");
+                            });
                               ev.target.value = "";
                             }}
                           />
@@ -442,25 +476,62 @@ export function MadoConfigModal({
               className="button is-success"
               disabled={!mado.hasValidURL()}
               onClick={async () => {
-                const yes = await perm.ensure(mado.url, fallback);
-                if (!yes) return;
-                await mado.save();
-                cleanup();
-                refresh();
+                setSaveError(null);
+                try {
+                  const yes = await perm.ensure(mado.url, fallback);
+                  if (!yes) return;
+                  await LaunchHistory.cleanup();
+                  await mado.save();
+                  cleanup();
+                  refresh();
+                } catch (error) {
+                  const message = String(error);
+                  if (/quota|bytes|storage/i.test(message)) {
+                    const used = await chrome.storage.local.getBytesInUse(null).catch(() => undefined);
+                    const usage = typeof used === "number" ? ` 現在の使用量は約${(used / 1024 / 1024).toFixed(1)} MBです。` : "";
+                    setSaveError(`Chromeの保存容量上限に達したため登録できません。既存の窓の大きなカスタムアイコンを削除してから再度お試しください。${usage}`);
+                  } else {
+                    setSaveError(`保存できませんでした: ${message}`);
+                  }
+                }
               }}
             >
               これでよし
             </button>
-            <button className="button" onClick={() => cleanup()}>
+            <button className="button" onClick={async () => {
+              if (draftMode && mado._id) {
+                await mado.delete();
+                refresh();
+              }
+              cleanup();
+            }}>
               やっぱりやめる
             </button>
             <button
               className="button is-warning"
-              disabled={!mado.hasValidURL() || !mado._id}
-              title={mado._id ? "" : "画面内設定は保存後に利用できます"}
+              disabled={!mado.hasValidURL()}
               onClick={async () => {
-                const yes = await perm.ensure(mado.url, fallback);
-                if (yes) await launcher.launch(mado, LaunchMode.DYNAMIC);
+                setSaveError(null);
+                const isNew = !mado._id;
+                try {
+                  const yes = await perm.ensure(mado.url, fallback);
+                  if (!yes) return;
+                  if (isNew) {
+                    await LaunchHistory.cleanup();
+                    await mado.save();
+                    setDraftStarted(true);
+                    update(mado);
+                  }
+                  await launcher.launch(mado, LaunchMode.DYNAMIC, draftMode || isNew);
+                } catch (error) {
+                  if (isNew && mado._id) await mado.delete();
+                  const message = String(error);
+                  if (/quota|bytes|storage/i.test(message)) {
+                    setSaveError("Chromeの保存容量上限に達したため画面内設定を開けません。既存の窓の大きなカスタムアイコンを削除してから再度お試しください。");
+                  } else {
+                    setSaveError(`画面内設定を開けませんでした: ${message}`);
+                  }
+                }
               }}
             >
               画面内設定を開く
@@ -475,9 +546,9 @@ export function MadoConfigModal({
             >
               試しに開く
             </button>
-            {!mado._id && (
+            {(!mado._id || draftMode) && (
               <p className="help">
-                ※ 窓の新規登録は保存後に画面内設定を利用できます
+                ※ 画面内設定を開くと下書き保存されます。「やっぱりやめる」で削除できます
               </p>
             )}
           </div>

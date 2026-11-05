@@ -61,6 +61,9 @@ export function MadoConfigModal({
 
   const [subPageName, setSubPageName] = useState("");
   const [subPageUrl, setSubPageUrl] = useState("");
+  const [editingSubPageIndex, setEditingSubPageIndex] = useState<number | null>(null);
+  const [editingSubPageName, setEditingSubPageName] = useState("");
+  const [editingSubPageUrl, setEditingSubPageUrl] = useState("");
   const [draggedSubPageIndex, setDraggedSubPageIndex] = useState<number | null>(
     null,
   );
@@ -206,9 +209,31 @@ export function MadoConfigModal({
                       <i className="fa fa-bars" />
                     </span>
 
-                    <div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      {editingSubPageIndex === index ? (
+                        <div className="mb-2">
+                          <div className="field mb-2">
+                            <label className="label is-small">ページ名</label>
+                            <input className="input is-small" type="text" value={editingSubPageName} onChange={(ev) => setEditingSubPageName(ev.target.value)} />
+                          </div>
+                          <div className="field mb-2">
+                            <label className="label is-small">ページURL</label>
+                            <input className="input is-small" type="url" value={editingSubPageUrl} onChange={(ev) => setEditingSubPageUrl(ev.target.value)} />
+                          </div>
+                          <div className="buttons are-small">
+                            <button type="button" className="button is-link" disabled={!editingSubPageName.trim() || !editingSubPageUrl.trim()} onClick={() => {
+                              const url = editingSubPageUrl.trim();
+                              mado.subPages[index] = { ...page, name: editingSubPageName.trim(), url };
+                              update(mado);
+                              setEditingSubPageIndex(null);
+                            }}>保存</button>
+                            <button type="button" className="button" onClick={() => setEditingSubPageIndex(null)}>キャンセル</button>
+                          </div>
+                        </div>
+                      ) : <>
                       <strong>{page.name}</strong>
                       <div className="is-size-7 has-text-grey">{page.url}</div>
+                      </>}
                       <div className="is-flex is-align-items-center mt-2" style={{ gap: "0.5rem" }}>
                         {page.iconUrl === "" ? (
                           <span className="icon has-text-grey"><i className="fa fa-globe" /></span>
@@ -272,6 +297,12 @@ export function MadoConfigModal({
                     </div>
                   </div>
 
+                  <div className="buttons are-small mb-0">
+                  {editingSubPageIndex !== index && <button type="button" className="button is-small" onClick={() => {
+                    setEditingSubPageIndex(index);
+                    setEditingSubPageName(page.name);
+                    setEditingSubPageUrl(page.url);
+                  }}>編集</button>}
                   <button
                     type="button"
                     className="button is-small is-danger is-light"
@@ -282,6 +313,7 @@ export function MadoConfigModal({
                   >
                     削除
                   </button>
+                  </div>
                 </div>
               </div>
             ))}

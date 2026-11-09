@@ -239,6 +239,12 @@ return win;
    */
   async reactivate(tab: chrome.tabs.Tab, mado: Mado): Promise<void> {
     // ここでは既存のウィンドウを再利用するので、Bazelを考慮したresizeがいらない
+    // CSS inserted with insertCSS belongs to the current document and is cleared
+    // when the page navigates (for example, from a login page to the target).
+    // Navigation callbacks can run before loading finishes. Wait for the new
+    // document so the CSS and content script are installed on the final page.
+    await this.waitForTabComplete(tab.id!);
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll);
     await this.scripting.js(tab.id!, "content-script.js");
     await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",

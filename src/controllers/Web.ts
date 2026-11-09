@@ -3,25 +3,10 @@ import MadoLauncher from "../services/MadoLauncher";
 import TabService from "../services/TabService";
 
 /**
- * hashやqueryを除去してURLを比較する
- */
-const cleanupURL = (raw: string) => {
-  return raw.split("#")[0].split("?")[0];
-}
-
-/**
- * hashやqueryを除去したうえで、
- * httpおよびhttpsの差分も含めてURLを比較する
- */
-const compareURL = (a: string, b: string) => {
-  if (cleanupURL(a) === cleanupURL(b)) return true;
-  if (cleanupURL(a).replace("http:", "https:") === cleanupURL(b).replace("http:", "https:")) return true;
-  return false;
-}
-
-/**
  * 未ログイン状態でのページリロード時に、DMMなどでログインしたあとに
- * リダイレクトされたときに、窓をactivateしなおす
+ * リダイレクトされたときに、窓をactivateしなおす。
+ * 起動履歴はタブ単位で作成しているため、遷移先URLが登録URLや
+ * ログインURLと異なっていても、このタブの履歴を使って復旧する。
  */
 export async function onNavigationCommited(details: chrome.webNavigation.WebNavigationTransitionCallbackDetails) {
   if (details.frameType != "outermost_frame") return;
@@ -36,10 +21,10 @@ export async function onNavigationCommited(details: chrome.webNavigation.WebNavi
     if (!tab) return;
     const history = await LaunchHistory.find(`${details.tabId}`);
     if (!history) return;
-    if (!compareURL(details.url, history.mado.url)) return;
-    await history.delete();
-    // console.log(`(demado) %c[INFO]`, "color:white;background-color:blue;", details);
-    await launcher.anchor(tab, history.mado, history.mode); // sessionStorageを埋め直す
+    // リダイレクトチェーンの途中でログイン画面を経由する場合がある。
+    // そのたびに履歴を消すと、次の遷移で復旧できなくなるため、
+    // 履歴はタブが閉じられるまで保持する。
+    await launcher.anchor(tab, history.mado, history.mode);
     const mado = await launcher.lookup(details.tabId);
     if (!mado || !mado.$existance) return;
     await launcher.reactivate(mado.$existance!.tab!, mado);

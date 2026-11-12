@@ -291,7 +291,7 @@ export function MadoConfigModal({
                               mado.subPages[index] = { ...page, showScroll: ev.target.checked };
                               update(mado);
                             }}
-                          /> {" "}スクロールバーを表示
+                          /> {" "}スクロールをする
                         </label>
                       </div>
                     </div>
@@ -443,10 +443,10 @@ export function MadoConfigModal({
           />
           <ChoiceField
             name="showScroll"
-            label="スクロールバー表示"
+            label="ホイールスクロール"
             defaultValue={mado.showScroll ? "1" : "0"}
-            offLabel="表示しない"
-            onLabel="あえて表示する"
+            offLabel="しない"
+            onLabel="する"
             onChange={(ev) => {
               mado.showScroll = ev.target.value == "1";
               update(mado);

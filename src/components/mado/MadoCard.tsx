@@ -81,10 +81,14 @@ function ToggleInformationTag({
   name,
   value,
   onToggle,
+  onLabel = "表示",
+  offLabel = "非表示",
 }: {
   name: string;
   value: boolean;
   onToggle: () => Promise<void>;
+  onLabel?: string;
+  offLabel?: string;
 }) {
   return (
     <button
@@ -98,7 +102,7 @@ function ToggleInformationTag({
       }}
       onKeyDown={(ev) => ev.stopPropagation()}
     >
-      {name}: {value ? "表示" : "非表示"}
+      {name}: {value ? onLabel : offLabel}
     </button>
   );
 }
@@ -239,7 +243,7 @@ export function MadoCard({
             <ToggleInformationTag name="アドレスバー" value={mado.addressbar} onToggle={async () => {
               await mado.update({ addressbar: !mado.addressbar }); refresh();
             }} />
-            <ToggleInformationTag name="スクロールバー" value={mado.showScroll} onToggle={async () => {
+            <ToggleInformationTag name="スクロール" value={mado.showScroll} onLabel="する" offLabel="しない" onToggle={async () => {
               await mado.update({ showScroll: !mado.showScroll }); refresh();
             }} />
             <ToggleInformationTag name="カード" value={mado.showLauncherCard} onToggle={async () => {

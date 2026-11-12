@@ -59,7 +59,7 @@ export function MadoConfigModal({
   const [draftStarted, setDraftStarted] = useState(false);
   const draftMode = draft || draftStarted;
 
-  const [subPageName, setSubPageName] = useState("");
+  const [subPageName, setSubPageName] = useState("攻略Wiki");
   const [subPageUrl, setSubPageUrl] = useState("");
   const [editingSubPageIndex, setEditingSubPageIndex] = useState<number | null>(null);
   const [editingSubPageName, setEditingSubPageName] = useState("");
@@ -338,8 +338,13 @@ export function MadoConfigModal({
                   className="input"
                   type="text"
                   value={subPageName}
-                  placeholder="攻略Wiki"
+                  onFocus={() => {
+                    if (subPageName === "攻略Wiki") setSubPageName("");
+                  }}
                   onChange={(ev) => setSubPageName(ev.target.value)}
+                  onBlur={() => {
+                    if (!subPageName.trim()) setSubPageName("攻略Wiki");
+                  }}
                 />
               </div>
             </div>
@@ -374,7 +379,7 @@ export function MadoConfigModal({
 
                 update(mado);
 
-                setSubPageName("");
+                setSubPageName("攻略Wiki");
                 setSubPageUrl("");
               }}
             >

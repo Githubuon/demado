@@ -128,6 +128,12 @@ function PreviewLaunchIcon({mado, launcher}: {mado: Mado, launcher: MadoLauncher
       const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
       if (!yes) return;
       await launcher.launch(mado);
+    }} onAuxClick={async (ev) => {
+      if (ev.button !== 1) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
+      if (yes) await launcher.launchAtHalfZoom(mado);
     }}><i className="fa fa-window-maximize" /></div>
   )
 }
@@ -144,6 +150,12 @@ function SubPageIcon({ page, mado, launcher }: {
       onClick={async (ev) => {
         ev.stopPropagation();
         await launcher.launchSubPage(mado, page);
+      }}
+      onAuxClick={async (ev) => {
+        if (ev.button !== 1) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        await launcher.launchSubPage(mado, page, true);
       }}
     >
       {page.iconUrl === "" ? (
@@ -194,6 +206,13 @@ export function MadoCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
+      onAuxClick={async (ev) => {
+        if (ev.button !== 1) return;
+        ev.preventDefault();
+        const perms = new PermissionService();
+        const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
+        if (yes) await launcher.launchAtHalfZoom(mado);
+      }}
     >
       <div className={"card-header"} style={{ backgroundColor: bgcolor }}>
 <p className={"card-header-title level " + textcolor}>

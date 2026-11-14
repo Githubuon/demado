@@ -46,6 +46,7 @@ export default class MadoLauncher {
   async launchSubPage(
     parentMado: Mado,
     page: MadoSubPage,
+    halfZoom = false,
   ): Promise<chrome.windows.Window> {
     await this.permission.ensure(page.url);
     const mado = new Mado();
@@ -65,7 +66,7 @@ export default class MadoLauncher {
 
     mado.addressbar = page.addressbar ?? false;
     mado.showScroll = page.showScroll ?? false;
-    mado.zoom = 1;
+    mado.zoom = halfZoom ? parentMado.zoom / 2 : 1;
     mado.offset = {
       left: 0,
       top: 0,
@@ -76,6 +77,7 @@ const tab = win.tabs?.[0];
 
 if (tab?.id !== undefined) {
   await this.scripting.offset(tab.id, mado.offset, mado.showScroll);
+  if (mado.zoom !== 1) await this.tabs.zoom.set(tab.id, mado.zoom);
 }
 
 if (win.id !== undefined) {
@@ -94,8 +96,9 @@ return win;
     mado: Mado,
     mode: LaunchMode = LaunchMode.DEFAULT,
     draft = false,
+    allowDuplicate = false,
   ): Promise<chrome.windows.Window> {
-    const exists = await this.retrieve(mado);
+    const exists = allowDuplicate ? null : await this.retrieve(mado);
     if (exists && mode == LaunchMode.DEFAULT) {
       // すでにlaunch済みなら、focusして終了
       this.windows.focus(exists.win.id!);
@@ -145,6 +148,11 @@ return win;
     }
 
     return win;
+  }
+
+  async launchAtHalfZoom(mado: Mado): Promise<chrome.windows.Window> {
+    const halfZoomMado = Mado.new({ ...mado.export(), zoom: mado.zoom / 2 }, mado._id || undefined);
+    return this.launch(halfZoomMado, LaunchMode.DEFAULT, false, true);
   }
 
   private async waitForTabComplete(tabId: number): Promise<void> {

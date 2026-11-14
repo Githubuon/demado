@@ -87,6 +87,12 @@ function SubPageButton({
         ev.stopPropagation();
         await launcher.launchSubPage(mado, page);
       }}
+      onAuxClick={async (ev) => {
+        if (ev.button !== 1) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        await launcher.launchSubPage(mado, page, true);
+      }}
     >
       {page.iconUrl === "" ? (
         <i className="fa fa-globe" />
@@ -135,6 +141,13 @@ export function ShortMadoCard({
           __action__: "/mado/launch",
           id: mado._id,
         });
+      }}
+      onAuxClick={async (ev) => {
+        if (ev.button !== 1) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const yes = await perm.ensure(mado.url, fallback);
+        if (yes) await launcher.launchAtHalfZoom(mado);
       }}
     >
       <div className="columns is-mobile">

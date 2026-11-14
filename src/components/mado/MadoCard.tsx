@@ -128,7 +128,7 @@ function PreviewLaunchIcon({mado, launcher}: {mado: Mado, launcher: MadoLauncher
       const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
       if (!yes) return;
       await launcher.launch(mado);
-    }} onAuxClick={async (ev) => {
+    }} onMouseDown={async (ev) => {
       if (ev.button !== 1) return;
       ev.preventDefault();
       ev.stopPropagation();
@@ -151,7 +151,7 @@ function SubPageIcon({ page, mado, launcher }: {
         ev.stopPropagation();
         await launcher.launchSubPage(mado, page);
       }}
-      onAuxClick={async (ev) => {
+      onMouseDown={async (ev) => {
         if (ev.button !== 1) return;
         ev.preventDefault();
         ev.stopPropagation();
@@ -206,7 +206,7 @@ export function MadoCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
-      onAuxClick={async (ev) => {
+      onMouseDown={async (ev) => {
         if (ev.button !== 1) return;
         ev.preventDefault();
         const perms = new PermissionService();

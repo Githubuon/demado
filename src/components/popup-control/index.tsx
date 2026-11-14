@@ -87,7 +87,7 @@ function SubPageButton({
         ev.stopPropagation();
         await launcher.launchSubPage(mado, page);
       }}
-      onAuxClick={async (ev) => {
+      onMouseDown={async (ev) => {
         if (ev.button !== 1) return;
         ev.preventDefault();
         ev.stopPropagation();
@@ -142,7 +142,7 @@ export function ShortMadoCard({
           id: mado._id,
         });
       }}
-      onAuxClick={async (ev) => {
+      onMouseDown={async (ev) => {
         if (ev.button !== 1) return;
         ev.preventDefault();
         ev.stopPropagation();

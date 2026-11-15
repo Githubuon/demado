@@ -14,7 +14,8 @@ export async function onNavigationCommited(details: chrome.webNavigation.WebNavi
   if (details.transitionType == "reload") {
     const mado = await launcher.lookup(details.tabId);
     if (!mado || !mado.$existance) return;
-    await launcher.reactivate(mado.$existance!.tab!, mado);
+    const history = await LaunchHistory.find(`${details.tabId}`);
+    await launcher.reactivate(mado.$existance.tab, mado, history?.trackHalfZoomPosition ?? false);
   }
   if (details.transitionQualifiers.includes("server_redirect")) {
     const tab = await new TabService().get(details.tabId);
@@ -27,6 +28,6 @@ export async function onNavigationCommited(details: chrome.webNavigation.WebNavi
     await launcher.anchor(tab, history.mado, history.mode);
     const mado = await launcher.lookup(details.tabId);
     if (!mado || !mado.$existance) return;
-    await launcher.reactivate(mado.$existance!.tab!, mado);
+    await launcher.reactivate(mado.$existance.tab, mado, history.trackHalfZoomPosition);
   }
 }

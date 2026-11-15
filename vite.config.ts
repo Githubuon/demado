@@ -15,6 +15,7 @@ export default defineConfig({
         path.resolve(__dirname, 'src/background.ts'),
         path.resolve(__dirname, 'src/injection/dynamic-config.ts'),
         path.resolve(__dirname, 'src/injection/content-script.ts'),
+        path.resolve(__dirname, 'src/injection/subpage-toolbar.ts'),
       ],
       output: {
         entryFileNames: '[name].js', // Remove hash from output file names

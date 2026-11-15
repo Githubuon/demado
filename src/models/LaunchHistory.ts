@@ -15,9 +15,11 @@ export default class LaunchHistory extends Model {
   static override schema = {
     mado: Types.model(Mado),
     mode: Types.string,
+    trackHalfZoomPosition: Types.bool,
   }
   public mado: Mado = Mado.new();
   public mode: LaunchMode = LaunchMode.DEFAULT;
+  public trackHalfZoomPosition = false;
 
   /** Remove orphaned launch records and large icon payloads from active records. */
   public static async cleanup(): Promise<void> {

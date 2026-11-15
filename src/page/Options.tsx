@@ -78,6 +78,7 @@ export function OptionsPage() {
   const launcher = new MadoLauncher(new WindowService(), new TabService(), new ScriptService());
   const [dragged, setDragged] = React.useState<HTMLElement | null>(null);
   const [devinfo, setDevInfo] = React.useState(false);
+  const [wheelClickSizePercent, setWheelClickSizePercent] = React.useState(String(config.wheelClickSizePercent ?? 50));
   const reorder = async () => {
     const ids = Array.from(document.querySelectorAll(".demado-card")).map(e => e.getAttribute("data-id")).filter(Boolean);
     for (let index = 0; index < ids.length; index++) await mados.find(m => m._id === ids[index])?.update({ index });
@@ -152,8 +153,39 @@ export function OptionsPage() {
             <input className="mr-2" type="checkbox" checked={config.alertOnClose} onChange={async (ev) => {
               await config.update({ alertOnClose: ev.target.checked }); refresh();
             }} />
-            <span>ブラウザを閉じ際に確認のアラートを表示する</span>
+            <span>ブラウザを閉じる際に確認のアラートを表示する</span>
           </label>
+        </div>
+
+        <div className="field mb-4">
+          <label className="label" htmlFor="wheel-click-size-percent">ホイールクリック時に開くのサイズ</label>
+          <div className="field has-addons" style={{ maxWidth: "12rem" }}>
+            <div className="control is-expanded">
+              <input
+                id="wheel-click-size-percent"
+                className="input"
+                type="number"
+                min="1"
+                step="1"
+                value={wheelClickSizePercent}
+                onChange={(ev) => setWheelClickSizePercent(ev.target.value)}
+                onBlur={async () => {
+                  const value = Number(wheelClickSizePercent);
+                  if (!Number.isFinite(value) || value < 1) {
+                    setWheelClickSizePercent(String(config.wheelClickSizePercent ?? 50));
+                    return;
+                  }
+                  await config.update({ wheelClickSizePercent: value });
+                  setWheelClickSizePercent(String(value));
+                }}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter") ev.currentTarget.blur();
+                }}
+                aria-label="ホイールクリック時に開くサイズの割合"
+              />
+            </div>
+            <div className="control"><span className="button is-static">%</span></div>
+          </div>
         </div>
 
         <div className="mb-2">

@@ -133,7 +133,7 @@ function PreviewLaunchIcon({mado, launcher}: {mado: Mado, launcher: MadoLauncher
       ev.preventDefault();
       ev.stopPropagation();
       const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
-      if (yes) await launcher.launchAtHalfZoom(mado);
+      if (yes) await launcher.launchAtWheelClickSize(mado);
     }}><i className="fa fa-window-maximize" /></div>
   )
 }
@@ -211,7 +211,7 @@ export function MadoCard({
         ev.preventDefault();
         const perms = new PermissionService();
         const yes = await perms.ensure(mado.url, () => window.alert("必要な権限が許可されていないため操作できません"));
-        if (yes) await launcher.launchAtHalfZoom(mado);
+        if (yes) await launcher.launchAtWheelClickSize(mado);
       }}
     >
       <div className={"card-header"} style={{ backgroundColor: bgcolor }}>

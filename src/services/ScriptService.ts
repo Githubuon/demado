@@ -30,7 +30,7 @@ export default class ScriptService {
     });
   }
 
-  async offset(tabId: number, offset: { left: number, top: number }, showScroll: boolean): Promise<void> {
+  async offset(tabId: number, offset: { left: number, top: number }, showScroll: boolean, extraTop = 0): Promise<void> {
     const previousCss = ScriptService.offsetStyles.get(tabId);
     if (previousCss) {
       try {
@@ -51,7 +51,7 @@ export default class ScriptService {
       body {
         position: relative !important;
         left: ${offset.left}px !important;
-        top: ${offset.top}px !important;
+        top: ${offset.top + extraTop}px !important;
       }
     `;
     await this.mod.insertCSS({

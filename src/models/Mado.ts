@@ -33,6 +33,7 @@ export interface MadoSubPage {
   left?: number;
   top?: number;
 }
+export type MadoSubPagePortable = Omit<MadoSubPage, "width" | "height" | "left" | "top">;
 export interface PortableJSONObject {
   version: string;
   timestamp: number;
@@ -46,7 +47,7 @@ export interface MadoPortableObject
   showScroll?: boolean;
   showLauncherCard?: boolean;
   showIcon?: boolean;
-  subPages?: MadoSubPage[];
+  subPages?: MadoSubPagePortable[];
 }
 
 interface MadoBasicInfo {
@@ -104,6 +105,10 @@ export default class Mado extends Model {
       x: Types.number.isRequired,
       y: Types.number.isRequired,
     }).isRequired,
+    halfZoomPosition: Types.shape({
+      x: Types.number.isRequired,
+      y: Types.number.isRequired,
+    }),
     // アドレスバー表示
     addressbar: Types.bool,
 
@@ -157,6 +162,7 @@ export default class Mado extends Model {
   public iconUrl?: string;
   public size = { width: 1200, height: 720 };
   public position = { x: 20, y: 100 };
+  public halfZoomPosition?: { x: number; y: number };
   public addressbar: boolean = false;
   public showScroll: boolean = false;
   public showLauncherCard: boolean = true;
@@ -231,7 +237,9 @@ export default class Mado extends Model {
       showScroll: this.showScroll,
       showLauncherCard: this.showLauncherCard,
       showIcon: this.showIcon,
-      subPages: this.subPages,
+      // サブサイトの窓位置とサイズは端末ごとのローカル設定として保持し、
+      // エクスポートには含めない。
+      subPages: this.subPages.map(({ width: _width, height: _height, left: _left, top: _top, ...page }) => page),
       size: this.size,
       offset: this.offset,
       zoom: this.zoom,

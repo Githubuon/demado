@@ -2,6 +2,7 @@ import Dashboard from "../models/Dashboard";
 import Mado from "../models/Mado";
 import type { MadoSubPage } from "../models/Mado";
 import LaunchHistory from "../models/LaunchHistory";
+import GlobalConfig from "../models/GlobalConfig";
 import PermissionService from "./PermissionService";
 import ScriptService from "./ScriptService";
 import TabService from "./TabService";
@@ -49,6 +50,9 @@ export default class MadoLauncher {
     halfZoom = false,
   ): Promise<chrome.windows.Window> {
     await this.permission.ensure(page.url);
+    const showCustomAddressbar = page.addressbar ?? false;
+    const config = halfZoom ? await GlobalConfig.user() : null;
+    const wheelClickScale = (config?.wheelClickSizePercent ?? 50) / 100;
     const mado = new Mado();
 
     mado.name = page.name;
@@ -64,28 +68,40 @@ export default class MadoLauncher {
       y: page.top ?? 100,
     };
 
-    mado.addressbar = page.addressbar ?? false;
+    // Native Chrome address bars make this a normal browser window and affect
+    // Chrome's own window restore bounds. Use a popup with Demado's in-page bar.
+    mado.addressbar = false;
     mado.showScroll = page.showScroll ?? false;
-    mado.zoom = halfZoom ? parentMado.zoom / 2 : 1;
+    mado.zoom = halfZoom ? wheelClickScale : 1;
     mado.offset = {
       left: 0,
       top: 0,
     };
 
-const win = await this.windows.open(mado);
+const win = await this.windows.open(mado, showCustomAddressbar);
 const tab = win.tabs?.[0];
 
 if (tab?.id !== undefined) {
-  await this.scripting.offset(tab.id, mado.offset, mado.showScroll);
+  if (!(await this.waitForTabComplete(tab.id))) return win;
+  await this.scripting.offset(tab.id, mado.offset, mado.showScroll, showCustomAddressbar ? 64 : 0);
   if (mado.zoom !== 1) await this.tabs.zoom.set(tab.id, mado.zoom);
+  if (showCustomAddressbar) await this.scripting.js(tab.id, "subpage-toolbar.js");
 }
 
 if (win.id !== undefined) {
-  chrome.runtime.sendMessage(chrome.runtime.id, {
+  await chrome.runtime.sendMessage(chrome.runtime.id, {
     _act_: "/mado/subpage:register",
     windowId: win.id,
     madoId: parentMado._id!,
     subPageUrl: page.url,
+    customAddressbar: showCustomAddressbar,
+    sizeScale: halfZoom ? wheelClickScale : 1,
+    bounds: {
+      width: win.width,
+      height: win.height,
+      left: win.left,
+      top: win.top,
+    },
   });
 }
 
@@ -97,6 +113,7 @@ return win;
     mode: LaunchMode = LaunchMode.DEFAULT,
     draft = false,
     allowDuplicate = false,
+    trackHalfZoomPosition = false,
   ): Promise<chrome.windows.Window> {
     const exists = allowDuplicate ? null : await this.retrieve(mado);
     if (exists && mode == LaunchMode.DEFAULT) {
@@ -108,25 +125,27 @@ return win;
       this.windows.close(exists.win.id!);
     }
 
-    const win = await this.windows.open(mado);
+    const win = await this.windows.open(mado, mado.addressbar);
     const tab = win.tabs![0];
     const historyMado = Mado.new({
       ...mado.export(),
       iconUrl: undefined,
       subPages: mado.subPages.map((page) => ({ ...page, iconUrl: undefined })),
     }, mado._id || undefined);
-    await LaunchHistory.create({ _id: tab.id, mado: historyMado, mode });
+    await LaunchHistory.create({ _id: tab.id, mado: historyMado, mode, trackHalfZoomPosition });
 
-    await this.waitForTabComplete(tab.id!);
-    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll);
+    if (!(await this.waitForTabComplete(tab.id!))) return win;
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar ? 64 : 0);
     if (mado.stylesheet) await this.scripting.style(tab.id!, mado.stylesheet);
     await this.scripting.js(tab.id!, "content-script.js");
+    if (mado.addressbar) await this.scripting.js(tab.id!, "subpage-toolbar.js");
 
     await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
       id: mado._id,
       mado: mado.export(),
       mode,
+      trackHalfZoomPosition,
     });
 
     // ここではウィンドウを新規作成しているので、Bazelを考慮したresizeが必要
@@ -150,36 +169,33 @@ return win;
     return win;
   }
 
-  async launchAtHalfZoom(mado: Mado): Promise<chrome.windows.Window> {
-    const halfZoomMado = Mado.new({ ...mado.export(), zoom: mado.zoom / 2 }, mado._id || undefined);
-    return this.launch(halfZoomMado, LaunchMode.DEFAULT, false, true);
+  async launchAtWheelClickSize(mado: Mado): Promise<chrome.windows.Window> {
+    const config = await GlobalConfig.user();
+    const wheelClickScale = (config.wheelClickSizePercent ?? 50) / 100;
+    const halfZoomMado = Mado.new({ ...mado.export(), zoom: mado.zoom * wheelClickScale }, mado._id || undefined);
+    halfZoomMado.position = mado.halfZoomPosition ?? mado.position;
+    return this.launch(halfZoomMado, LaunchMode.DEFAULT, false, true, true);
   }
 
-  private async waitForTabComplete(tabId: number): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
+  private async waitForTabComplete(tabId: number): Promise<boolean> {
+    return await new Promise<boolean>((resolve) => {
       let settled = false;
       const cleanup = () => {
         clearTimeout(timeout);
         chrome.tabs.onUpdated.removeListener(onUpdated);
         chrome.tabs.onRemoved.removeListener(onRemoved);
       };
-      const finish = () => {
+      const finish = (tabStillOpen = true) => {
         if (settled) return;
         settled = true;
         cleanup();
-        resolve();
-      };
-      const fail = (error: Error) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(error);
+        resolve(tabStillOpen);
       };
       const onUpdated = (updatedTabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
         if (updatedTabId === tabId && changeInfo.status === "complete") finish();
       };
       const onRemoved = (removedTabId: number) => {
-        if (removedTabId === tabId) fail(new Error("Tab closed before loading completed"));
+        if (removedTabId === tabId) finish(false);
       };
       const timeout = setTimeout(() => {
         console.warn(`[MadoLauncher] Tab ${tabId} did not finish loading in time; injecting scripts anyway`);
@@ -190,8 +206,9 @@ return win;
       chrome.tabs.onRemoved.addListener(onRemoved);
       void this.tabs.get(tabId).then((tab) => {
         if (tab?.status === "complete") finish();
-      }).catch((error: unknown) => {
-        fail(error instanceof Error ? error : new Error(String(error)));
+      }).catch(() => {
+        // The tab may have closed between creation and this lookup.
+        finish(false);
       });
     });
   }
@@ -245,19 +262,21 @@ return win;
    * そのウィンドウを再度demadoとして扱うようにする
    * @param {chrome.tabs.Tab} tab
    */
-  async reactivate(tab: chrome.tabs.Tab, mado: Mado): Promise<void> {
+  async reactivate(tab: chrome.tabs.Tab, mado: Mado, trackHalfZoomPosition = false): Promise<void> {
     // ここでは既存のウィンドウを再利用するので、Bazelを考慮したresizeがいらない
     // CSS inserted with insertCSS belongs to the current document and is cleared
     // when the page navigates (for example, from a login page to the target).
     // Navigation callbacks can run before loading finishes. Wait for the new
     // document so the CSS and content script are installed on the final page.
-    await this.waitForTabComplete(tab.id!);
-    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll);
+    if (!(await this.waitForTabComplete(tab.id!))) return;
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar ? 64 : 0);
     await this.scripting.js(tab.id!, "content-script.js");
+    if (mado.addressbar) await this.scripting.js(tab.id!, "subpage-toolbar.js");
     await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
       id: mado._id,
       mado: mado.export(),
+      trackHalfZoomPosition,
     });
   }
 

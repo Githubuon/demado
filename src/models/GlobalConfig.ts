@@ -5,6 +5,7 @@ export default class GlobalConfig extends Model {
   public static override _namespace_?: string | undefined = "GlobalConfig";
 
   public alertOnClose: boolean = false;
+  public wheelClickSizePercent: number = 50;
   public readDevInfoVersion: string = "v0.0.0";
 
   static async user(): Promise<GlobalConfig> {

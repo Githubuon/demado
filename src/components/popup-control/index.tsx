@@ -147,7 +147,7 @@ export function ShortMadoCard({
         ev.preventDefault();
         ev.stopPropagation();
         const yes = await perm.ensure(mado.url, fallback);
-        if (yes) await launcher.launchAtHalfZoom(mado);
+        if (yes) await launcher.launchAtWheelClickSize(mado);
       }}
     >
       <div className="columns is-mobile">

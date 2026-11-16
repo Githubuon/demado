@@ -86,7 +86,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 
     const history = await LaunchHistory.find(`${tabId}`);
-    if (!history?.mado.addressbar) return;
+    if (history?.mado.addressbar !== true) return;
     const launcher = new MadoLauncher();
     const mado = await Mado.find(history.mado._id!);
     if (!mado) return;

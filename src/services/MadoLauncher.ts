@@ -50,7 +50,7 @@ export default class MadoLauncher {
     halfZoom = false,
   ): Promise<chrome.windows.Window> {
     await this.permission.ensure(page.url);
-    const showCustomAddressbar = page.addressbar ?? false;
+    const showCustomAddressbar = page.addressbar === true && !page.chromeAddressbar;
     const config = halfZoom ? await GlobalConfig.user() : null;
     const wheelClickScale = (config?.wheelClickSizePercent ?? 50) / 100;
     const mado = new Mado();
@@ -70,7 +70,7 @@ export default class MadoLauncher {
 
     // Native Chrome address bars make this a normal browser window and affect
     // Chrome's own window restore bounds. Use a popup with Demado's in-page bar.
-    mado.addressbar = false;
+    mado.addressbar = page.chromeAddressbar ? "chrome" : false;
     mado.showScroll = page.showScroll ?? false;
     mado.zoom = halfZoom ? wheelClickScale : 1;
     mado.offset = {
@@ -78,7 +78,7 @@ export default class MadoLauncher {
       top: 0,
     };
 
-const win = await this.windows.open(mado, showCustomAddressbar);
+    const win = await this.windows.open(mado, showCustomAddressbar);
 const tab = win.tabs?.[0];
 
 if (tab?.id !== undefined) {
@@ -125,7 +125,7 @@ return win;
       this.windows.close(exists.win.id!);
     }
 
-    const win = await this.windows.open(mado, mado.addressbar);
+    const win = await this.windows.open(mado, mado.addressbar === true);
     const tab = win.tabs![0];
     const historyMado = Mado.new({
       ...mado.export(),
@@ -135,10 +135,10 @@ return win;
     await LaunchHistory.create({ _id: tab.id, mado: historyMado, mode, trackHalfZoomPosition });
 
     if (!(await this.waitForTabComplete(tab.id!))) return win;
-    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar ? 64 : 0);
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar === true ? 64 : 0);
     if (mado.stylesheet) await this.scripting.style(tab.id!, mado.stylesheet);
     await this.scripting.js(tab.id!, "content-script.js");
-    if (mado.addressbar) await this.scripting.js(tab.id!, "subpage-toolbar.js");
+    if (mado.addressbar === true) await this.scripting.js(tab.id!, "subpage-toolbar.js");
 
     await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
@@ -269,9 +269,9 @@ return win;
     // Navigation callbacks can run before loading finishes. Wait for the new
     // document so the CSS and content script are installed on the final page.
     if (!(await this.waitForTabComplete(tab.id!))) return;
-    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar ? 64 : 0);
+    await this.scripting.offset(tab.id!, mado.offset, mado.showScroll, mado.addressbar === true ? 64 : 0);
     await this.scripting.js(tab.id!, "content-script.js");
-    if (mado.addressbar) await this.scripting.js(tab.id!, "subpage-toolbar.js");
+    if (mado.addressbar === true) await this.scripting.js(tab.id!, "subpage-toolbar.js");
     await chrome.tabs.sendMessage(tab.id!, {
       _act_: "/injected:__init__",
       id: mado._id,

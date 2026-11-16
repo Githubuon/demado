@@ -29,7 +29,7 @@ export default class WindowService {
 
   async open(mado: Mado, useCustomAddressbar = false): Promise<chrome.windows.Window> {
     return await this.create(mado.url, {
-      type: mado.addressbar && !useCustomAddressbar ? "normal" : "popup",
+      type: (mado.addressbar === "chrome" || (mado.addressbar === true && !useCustomAddressbar)) ? "normal" : "popup",
       left: mado.position.x,
       top: mado.position.y,
       width: Math.round(mado.size.width * mado.zoom),

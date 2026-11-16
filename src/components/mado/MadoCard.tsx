@@ -259,9 +259,13 @@ export function MadoCard({
             <EditableNumberTag name="ズーム" value={mado.zoom} step={0.05} min={0.1} onSave={async (value) => {
               await mado.update({ zoom: value }); refresh();
             }} />
-            <ToggleInformationTag name="アドレスバー" value={mado.addressbar} onToggle={async () => {
-              await mado.update({ addressbar: !mado.addressbar }); refresh();
-            }} />
+            <button type="button" className="tag is-info is-light" title="クリックして切り替え" onClick={(ev) => {
+              ev.stopPropagation();
+              const next = mado.addressbar === false ? true : mado.addressbar === true ? "chrome" : false;
+              void mado.update({ addressbar: next }).then(refresh);
+            }} onKeyDown={(ev) => ev.stopPropagation()}>
+              アドレスバー: {mado.addressbar === "chrome" ? "Chrome" : mado.addressbar ? "表示" : "非表示"}
+            </button>
             <ToggleInformationTag name="スクロール" value={mado.showScroll} onLabel="する" offLabel="しない" onToggle={async () => {
               await mado.update({ showScroll: !mado.showScroll }); refresh();
             }} />

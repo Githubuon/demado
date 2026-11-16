@@ -1,5 +1,10 @@
 import { Model, Types } from "jstorm/chrome/local";
 import { Schema } from "jstorm/model";
+import type { TypeCheckFunc } from "jstorm/types";
+
+const addressbarType = ((value: unknown) =>
+  typeof value === "boolean" || value === "chrome" ? null : new Error("addressbar must be boolean or chrome")) as unknown as TypeCheckFunc;
+addressbarType.isRequired = addressbarType;
 
 interface MadoExistanceHydrator {
   retrieve(mado: Mado): Promise<{
@@ -26,7 +31,8 @@ export interface MadoSubPage {
   name: string;
   url: string;
   iconUrl?: string;
-  addressbar?: boolean;
+  addressbar?: boolean | "chrome";
+  chromeAddressbar?: boolean;
   showScroll?: boolean;
   width: number;
   height: number;
@@ -54,7 +60,7 @@ interface MadoBasicInfo {
   url: string;
   name: string;
   iconUrl?: string;
-  addressbar: boolean;
+  addressbar: boolean | "chrome";
 }
 interface MadoColorable {
   colorcode?: string;
@@ -110,7 +116,7 @@ export default class Mado extends Model {
       y: Types.number.isRequired,
     }),
     // アドレスバー表示
-    addressbar: Types.bool,
+    addressbar: addressbarType,
 
     /**
      * @MODIFY-PROPERTIES
@@ -135,7 +141,8 @@ export default class Mado extends Model {
         name: Types.string.isRequired,
         url: Types.string.isRequired,
         iconUrl: Types.string,
-        addressbar: Types.bool,
+        addressbar: addressbarType,
+        chromeAddressbar: Types.bool,
         showScroll: Types.bool,
       }),
     ),
@@ -163,7 +170,7 @@ export default class Mado extends Model {
   public size = { width: 1200, height: 720 };
   public position = { x: 20, y: 100 };
   public halfZoomPosition?: { x: number; y: number };
-  public addressbar: boolean = false;
+  public addressbar: boolean | "chrome" = false;
   public showScroll: boolean = false;
   public showLauncherCard: boolean = true;
   public showIcon: boolean = true;

@@ -276,12 +276,23 @@ export function MadoConfigModal({
                         <label className="checkbox" onClick={(ev) => ev.stopPropagation()}>
                           <input
                             type="checkbox"
-                            checked={page.addressbar ?? false}
+                            checked={page.addressbar === true}
                             onChange={(ev) => {
                               mado.subPages[index] = { ...page, addressbar: ev.target.checked };
                               update(mado);
                             }}
                           /> {" "}アドレスバーを表示
+                        </label>
+                        <label className={`checkbox ${page.addressbar ? "" : "has-text-grey-light"}`} onClick={(ev) => ev.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={page.chromeAddressbar ?? false}
+                            disabled={!page.addressbar}
+                            onChange={(ev) => {
+                              mado.subPages[index] = { ...page, chromeAddressbar: ev.target.checked };
+                              update(mado);
+                            }}
+                          /> {" "}Chrome
                         </label>
                         <label className="checkbox" onClick={(ev) => ev.stopPropagation()}>
                           <input
@@ -372,6 +383,7 @@ export function MadoConfigModal({
                   url,
                   iconUrl,
                   addressbar: false,
+                  chromeAddressbar: false,
                   showScroll: false,
                   width: 1200,
                   height: 720,
@@ -438,11 +450,10 @@ export function MadoConfigModal({
           <ChoiceField
             name="addressbar"
             label="アドレスバー表示"
-            defaultValue={mado.addressbar ? "1" : "0"}
-            offLabel="表示しない"
-            onLabel="あえて表示する"
+            defaultValue={mado.addressbar === "chrome" ? "chrome" : mado.addressbar ? "1" : "0"}
+            choices={[{ value: "0", label: "表示しない" }, { value: "1", label: "あえて表示する" }, { value: "chrome", label: "Chromeで表示" }]}
             onChange={(ev) => {
-              mado.addressbar = ev.target.value == "1";
+              mado.addressbar = ev.target.value === "chrome" ? "chrome" : ev.target.value === "1";
               update(mado);
             }}
           />

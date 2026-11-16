@@ -2,6 +2,17 @@ import LaunchHistory from "../models/LaunchHistory";
 import MadoLauncher from "../services/MadoLauncher";
 import TabService from "../services/TabService";
 
+async function hasHostPermission(url: string | undefined): Promise<boolean> {
+  if (!url) return false;
+  try {
+    const page = new URL(url);
+    if (page.protocol !== "http:" && page.protocol !== "https:") return false;
+    return await chrome.permissions.contains({ origins: [`${page.origin}/*`] });
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 未ログイン状態でのページリロード時に、DMMなどでログインしたあとに
  * リダイレクトされたときに、窓をactivateしなおす。
@@ -20,6 +31,9 @@ export async function onNavigationCommited(details: chrome.webNavigation.WebNavi
   if (details.transitionQualifiers.includes("server_redirect")) {
     const tab = await new TabService().get(details.tabId);
     if (!tab) return;
+    // ログイン画面など許可されていない中間ドメインではスクリプトを
+    // 注入できない。履歴は保持し、許可済みの遷移先に戻った時に復旧する。
+    if (!(await hasHostPermission(tab.url))) return;
     const history = await LaunchHistory.find(`${details.tabId}`);
     if (!history) return;
     // リダイレクトチェーンの途中でログイン画面を経由する場合がある。

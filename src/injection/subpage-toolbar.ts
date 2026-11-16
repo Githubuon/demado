@@ -9,11 +9,8 @@
   shadow.innerHTML = `
     <style>
       :host { all: initial; }
-      .bar { box-sizing:border-box; height:64px; padding:5px 10px; color:#202124; background:#f1f3f4;
+      .bar { box-sizing:border-box; height:39px; padding:5px 10px; color:#202124; background:#f1f3f4;
         border-bottom:1px solid #dadce0; font:13px/1.2 Arial,sans-serif; box-shadow:0 1px 3px #0002; }
-      .site { height:24px; display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; overflow:hidden; }
-      .site img { width:16px; height:16px; object-fit:contain; flex:none; }
-      .site-name { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
       .controls { height:29px; display:flex; align-items:center; gap:5px; }
       button { box-sizing:border-box; height:25px; border:1px solid #dadce0; border-radius:4px; padding:0 8px;
         color:#202124; background:#fff; font:12px Arial,sans-serif; white-space:nowrap; cursor:pointer; }
@@ -25,12 +22,11 @@
       input { box-sizing:border-box; width:100%; height:25px; border:1px solid #c6c9cc; border-radius:4px;
         padding:0 8px; color:#202124; background:#fff; font:12px Arial,sans-serif; outline:none; }
       input:focus { border-color:#4285f4; box-shadow:0 0 0 1px #4285f4; }
-      .status { position:absolute; right:10px; top:5px; color:#5f6368; font-size:11px; }
-      .share-menu { position:absolute; right:10px; top:59px; display:flex; gap:4px; padding:5px; background:#fff;
+      .status { position:absolute; right:10px; top:39px; color:#5f6368; font-size:11px; }
+      .share-menu { position:absolute; right:10px; top:34px; display:flex; gap:4px; padding:5px; background:#fff;
         border:1px solid #dadce0; border-radius:5px; box-shadow:0 2px 8px #0003; }
     </style>
     <div class="bar" role="region" aria-label="Demadoページ操作">
-      <div class="site"><img alt=""><span class="site-name"></span><span class="status" aria-live="polite"></span></div>
       <div class="controls">
         <button class="nav back" type="button" aria-label="戻る" title="戻る">‹</button>
         <button class="nav forward" type="button" aria-label="進む" title="進む">›</button>
@@ -44,13 +40,12 @@
         <button type="button" data-share="x">X</button>
         <button type="button" data-share="mail">メール</button>
       </div>
+      <span class="status" aria-live="polite"></span>
     </div>`;
 
   (document.documentElement || document).appendChild(host);
   const root = shadow;
   const input = root.querySelector<HTMLInputElement>("input")!;
-  const title = root.querySelector<HTMLElement>(".site-name")!;
-  const icon = root.querySelector<HTMLImageElement>(".site img")!;
   const status = root.querySelector<HTMLElement>(".status")!;
   let lastUrl = "";
   let statusTimer: number | undefined;
@@ -64,11 +59,6 @@
   const refreshPageInfo = () => {
     if (input !== root.activeElement && location.href !== lastUrl) input.value = location.href;
     lastUrl = location.href;
-    const pageTitle = document.title || location.hostname;
-    if (title.textContent !== pageTitle) title.textContent = pageTitle;
-    const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"],link[rel="shortcut icon"]');
-    const iconUrl = favicon?.href || new URL("/favicon.ico", location.href).href;
-    if (icon.src !== iconUrl) icon.src = iconUrl;
   };
 
   const runAction = async (action: string) => {
